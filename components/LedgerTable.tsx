@@ -5,7 +5,7 @@ interface Contribution { member_id: string; contribution_date: string; amount: n
 
 interface Props {
   members: Member[];
-  sundays: string[]; // 'YYYY-MM-DD' strings
+  sundays: string[];
   contributions: Contribution[];
   expectedWeeklyAmount: number;
   loggedIn?: boolean;
@@ -26,10 +26,8 @@ export default function LedgerTable({
       .filter((c) => c.member_id === memberId && sundays.includes(c.contribution_date))
       .reduce((sum, c) => sum + Number(c.amount), 0);
 
-  const memberExpected = (member: Member) => {
-    const joined = member.joined_date;
-    return sundays.filter((s) => s >= joined).length * expectedWeeklyAmount;
-  };
+  const memberExpected = (member: Member) =>
+    sundays.filter((s) => s >= member.joined_date).length * expectedWeeklyAmount;
 
   if (members.length === 0) return <p className="empty-state">No members yet.</p>;
   if (sundays.length === 0) return <p className="empty-state">No Sundays recorded for this period.</p>;
@@ -53,6 +51,7 @@ export default function LedgerTable({
           {members.map((m) => {
             const actual = memberActual(m.id);
             const expected = memberExpected(m);
+            const completed = actual >= expected && expected > 0;
             return (
               <tr key={m.id}>
                 <td className="col-name">{m.name}</td>
@@ -78,10 +77,15 @@ export default function LedgerTable({
                     </td>
                   );
                 })}
-                <td className="col-progress">₱{actual.toFixed(2)} of ₱{expected.toFixed(2)}</td>
+                <td className="col-progress">
+                  {completed
+                    ? <span className="status-completed">✓ Completed</span>
+                    : <span>₱{actual.toFixed(2)} of ₱{expected.toFixed(2)}</span>
+                  }
+                </td>
                 {loggedIn && (
                   <td className="col-action">
-                    <button className="remove-btn" title="Edit joined date" onClick={() => onEditMember?.(m)}>✎</button>
+                    <button className="remove-btn" title="Edit member" onClick={() => onEditMember?.(m)}>✎</button>
                     <button className="remove-btn" title="Remove member" onClick={() => onRemoveMember?.(m.id, m.name)}>×</button>
                   </td>
                 )}

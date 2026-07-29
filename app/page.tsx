@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import StatsBar from '@/components/StatsBar';
 import YearMonthPicker from '@/components/YearMonthPicker';
 import LedgerTable from '@/components/LedgerTable';
+import AllTimeTable from '@/components/AllTimeTable';
 import PinModal from '@/components/PinModal';
 import AmountEditModal from '@/components/AmountEditModal';
 import MemberForm from '@/components/MemberForm';
@@ -13,7 +14,9 @@ import { sundaysInMonth, toDateString } from '@/lib/dates';
 interface Settings { church_name: string; expected_weekly_amount: number }
 interface Member { id: string; name: string; joined_date: string }
 interface Contribution { member_id: string; contribution_date: string; amount: number }
-interface LedgerData { settings: Settings; members: Member[]; sundays: string[]; contributions: Contribution[] }
+interface AggRow { member_id: string; year: number; month: number; actual: number; expected: number }
+interface MonthData { settings: Settings; members: Member[]; sundays: string[]; contributions: Contribution[] }
+interface AllData { settings: Settings; members: Member[]; months: string[]; rows: AggRow[] }
 interface EditTarget { memberId: string; date: string; memberName: string; current: number | null }
 
 export default function Home() {
@@ -21,8 +24,8 @@ export default function Home() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [allTime, setAllTime] = useState(false);
-  const [data, setData] = useState<LedgerData | null>(null);
-  const [allData, setAllData] = useState<{ contributions: Contribution[]; members: Member[] } | null>(null);
+  const [monthData, setMonthData] = useState<MonthData | null>(null);
+  const [allData, setAllData] = useState<AllData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [pinSet, setPinSet] = useState(false);
@@ -36,50 +39,59 @@ export default function Home() {
       .then((d) => { setLoggedIn(d.loggedIn); setPinSet(d.pinSet); });
   }, []);
 
-  const fetchLedger = useCallback(() => {
+  const fetchMonth = useCallback(() => {
     setLoading(true);
-    const url = allTime
-      ? '/api/ledger?all=true'
-      : `/api/ledger?year=${year}&month=${month}`;
-    fetch(url).then((r) => r.json()).then((d) => {
-      if (d.settings && d.members && d.sundays && d.contributions) setData(d);
-      setLoading(false);
-    });
-  }, [year, month, allTime]);
+    fetch(`/api/ledger?year=${year}&month=${month}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.settings && d.members) setMonthData(d); setLoading(false); });
+  }, [year, month]);
 
   const fetchAllTime = useCallback(() => {
-    fetch('/api/ledger?all=true').then((r) => r.json())
-      .then((d) => { if (d.contributions && d.members) setAllData(d); });
+    setLoading(true);
+    fetch('/api/ledger?all=true')
+      .then((r) => r.json())
+      .then((d) => { if (d.settings && d.members) setAllData(d); setLoading(false); });
   }, []);
 
-  useEffect(() => { fetchLedger(); }, [fetchLedger]);
-  useEffect(() => { fetchAllTime(); }, [fetchAllTime]);
+  useEffect(() => { if (!allTime) fetchMonth(); }, [allTime, fetchMonth]);
+  useEffect(() => { if (allTime) fetchAllTime(); }, [allTime, fetchAllTime]);
 
-  const refresh = () => { fetchLedger(); fetchAllTime(); };
+  const refresh = () => { allTime ? fetchAllTime() : fetchMonth(); };
 
-  // All-time total
-  const grandTotal = (allData?.contributions ?? []).reduce((sum, c) => sum + Number(c.amount), 0);
+  // Stats scoped to current view
+  const settings = allTime ? allData?.settings : monthData?.settings;
+  const members = allTime ? (allData?.members ?? []) : (monthData?.members ?? []);
+  const expectedWeekly = Number(settings?.expected_weekly_amount ?? 20);
 
-  // Current month stats using joined_date-aware formula
-  const currentMonthSundays = sundaysInMonth(today.getFullYear(), today.getMonth() + 1).map(toDateString);
-  const currentMembers = allData?.members ?? [];
-  const monthCollected = (allData?.contributions ?? [])
-    .filter((c) => currentMonthSundays.includes(c.contribution_date))
-    .reduce((sum, c) => sum + Number(c.amount), 0);
-  const monthExpected = currentMembers.reduce((sum, m) => {
-    return sum + currentMonthSundays.filter((s) => s >= m.joined_date).length * (data?.settings?.expected_weekly_amount ?? 20);
-  }, 0);
+  let collected = 0;
+  let expectedCollectibles = 0;
 
-  // Years available for picker
+  if (allTime && allData) {
+    collected = allData.rows.reduce((sum, r) => sum + r.actual, 0);
+    expectedCollectibles = allData.rows.reduce((sum, r) => sum + r.expected, 0);
+  } else if (!allTime && monthData) {
+    const sundays = monthData.sundays;
+    collected = monthData.contributions.reduce((sum, c) => sum + Number(c.amount), 0);
+    expectedCollectibles = members.reduce((sum, m) => {
+      return sum + sundays.filter((s) => s >= m.joined_date).length * expectedWeekly;
+    }, 0);
+  }
+
+  // Years for picker — derived from allData if available, else current year only
   const availableYears = Array.from(new Set([
-    ...(allData?.contributions ?? []).map((c) => c.contribution_date.slice(0, 4)),
-    ...(allData?.members ?? []).map((m) => m.joined_date.slice(0, 4)),
-    String(today.getFullYear()),
-  ])).map(Number).sort();
+    ...(allData?.rows ?? []).map((r) => r.year),
+    ...(allData?.members ?? []).map((m) => Number(m.joined_date.slice(0, 4))),
+    today.getFullYear(),
+  ])).sort();
 
-  // Future month check
   const isFutureMonth = !allTime &&
     (year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth() + 1));
+
+  // Keep allData fresh for year picker even in month view
+  useEffect(() => {
+    fetch('/api/ledger?all=true').then((r) => r.json())
+      .then((d) => { if (d.settings && d.members) setAllData(d); });
+  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -113,7 +125,7 @@ export default function Home() {
   }
 
   function openEditModal(memberId: string, date: string, current: number | null) {
-    const member = data?.members.find((m) => m.id === memberId);
+    const member = monthData?.members.find((m) => m.id === memberId);
     if (!member) return;
     setEditTarget({ memberId, date, memberName: member.name, current });
   }
@@ -129,10 +141,13 @@ export default function Home() {
     refresh();
   }
 
+  // Compute sundays for month view to pass to AllTimeTable months
+  const currentSundays = monthData?.sundays ?? sundaysInMonth(year, month).map(toDateString);
+
   return (
     <main className="main">
       <header className="header">
-        <h1>{data?.settings?.church_name ?? 'Youth Ministry'}</h1>
+        <h1>{settings?.church_name ?? 'Youth Ministry'}</h1>
         <p className="subtitle">Contribution Ledger</p>
         <div className="auth-bar">
           {loggedIn
@@ -143,10 +158,9 @@ export default function Home() {
       </header>
 
       <StatsBar
-        allTimeTotal={grandTotal}
-        memberCount={currentMembers.length}
-        monthCollected={monthCollected}
-        monthExpected={monthExpected}
+        collected={collected}
+        expectedCollectibles={expectedCollectibles}
+        memberCount={members.length}
       />
 
       {loggedIn && (
@@ -168,12 +182,18 @@ export default function Home() {
         <p className="empty-state">Loading…</p>
       ) : isFutureMonth ? (
         <p className="empty-state">This month hasn't happened yet.</p>
-      ) : data ? (
+      ) : allTime && allData ? (
+        <AllTimeTable
+          members={allData.members}
+          months={allData.months}
+          rows={allData.rows}
+        />
+      ) : monthData ? (
         <LedgerTable
-          members={data.members}
-          sundays={data.sundays}
-          contributions={data.contributions}
-          expectedWeeklyAmount={data.settings?.expected_weekly_amount ?? 20}
+          members={monthData.members}
+          sundays={currentSundays}
+          contributions={monthData.contributions}
+          expectedWeeklyAmount={expectedWeekly}
           loggedIn={loggedIn}
           onEditAmount={openEditModal}
           onRemoveMember={handleRemoveMember}

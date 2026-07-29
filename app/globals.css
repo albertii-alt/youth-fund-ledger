@@ -159,8 +159,8 @@ body {
   border-radius: 6px;
   background: #fff;
   font-size: 1rem;
-  letter-spacing: 0.2em;
 }
+input[type="password"].pin-input { letter-spacing: 0.2em; }
 .modal-error { color: #b5362a; font-size: 0.8rem; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.25rem; }
 
@@ -273,3 +273,52 @@ body {
 
 /* N/A cell for before joined_date */
 .stamp-na { color: #c0b49a; font-size: 0.8rem; }
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .main { padding: 1rem 0.75rem; }
+  .header h1 { font-size: 1.4rem; }
+
+  .stats-bar { gap: 0.75rem; padding: 0.75rem 1rem; }
+  .stat-value { font-size: 0.95rem; }
+
+  .ymp-months { grid-template-columns: repeat(4, 1fr); }
+
+  .ledger-table { font-size: 0.75rem; }
+  .ledger-table th, .ledger-table td { padding: 0.4rem 0.4rem; }
+  .col-progress { font-size: 0.7rem; }
+
+  .modal { padding: 1.25rem; max-width: 95vw; }
+
+  .admin-bar { padding: 0.6rem 0.75rem; }
+}
+
+/* ── Print ── */
+@media print {
+  .auth-bar,
+  .admin-bar,
+  .ymp-wrap,
+  .remove-btn,
+  .col-action,
+  .btn-primary,
+  .btn-secondary { display: none !important; }
+
+  body { background: #fff; color: #000; font-size: 11pt; }
+  .main { max-width: 100%; padding: 0; }
+  .header h1 { color: #000; font-size: 16pt; }
+  .subtitle { color: #555; }
+
+  .stats-bar { background: #fff; color: #000; border: 1px solid #ccc; border-radius: 0; }
+  .stat-label { opacity: 1; color: #555; }
+
+  .ledger-table th { background: #333; color: #fff; }
+  .ledger-table tr:nth-child(even) td { background: #f5f5f5; }
+  .stamp { background: #555; }
+  .stamp-empty { border-color: #999; }
+
+  .table-wrapper { overflow: visible; }
+}
+
+/* Progress status */
+.status-completed { color: #2d5a3d; font-weight: bold; }
+.status-remaining { color: #7a6f5e; font-size: 0.8rem; }

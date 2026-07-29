@@ -84,7 +84,7 @@ from a past month that simply has zero contributions recorded.
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
 | `/api/ledger?year=YYYY&month=MM` | GET | public | Members, computed Sundays for that month, contributions, settings |
-| `/api/ledger?all=true` | GET | public | All-time view across every month with data |
+| `/api/ledger?all=true` | GET | public | Returns pre-aggregated per-member-per-month `{ year, month, actual, expected, status }` rows — NOT raw per-Sunday contributions. This is what powers the month-grid "All time" view. |
 | `/api/auth/set-pin` | POST | public (only if no PIN set) | First-time PIN setup |
 | `/api/auth/login` | POST | public | Verify PIN, issue session cookie |
 | `/api/auth/logout` | POST | session | Clear session cookie |
@@ -114,7 +114,11 @@ from a past month that simply has zero contributions recorded.
     month with nothing recorded is a valid, real state (nobody's paid
     anything yet that month), not an error.
 - Defaults to current year + current month on first load.
-- An "All time" toggle/button switches to the aggregate view (FR-12).
+- An "All time" toggle/button switches to the aggregate view (FR-12): this
+  replaces the per-Sunday `LedgerTable` with a per-month version — one column
+  per month (across all years the group has existed) instead of one column
+  per Sunday. Each cell uses `alltime_status()` from §7 ("Completed" or
+  "Remaining ₱Z").
 
 ## 7. Expected/Progress Calculation
 
@@ -127,11 +131,42 @@ actual_for_member(member, year, month) =
   sum(contributions.amount where member_id = member.id
       and contribution_date in sundaysInMonth(year, month))
 
-progress_label = "₱{actual} of ₱{expected}"
+progress_status(member, year, month):
+  if actual_for_member >= expected_for_member:
+    return "Completed"
+  else:
+    return "₱{actual_for_member} of ₱{expected_for_member}"
 ```
 
-Month-wide summary = sum of `actual_for_member` and `expected_for_member`
-across all members for the selected month.
+**Month view**: each member's cell in the summary column uses
+`progress_status()` above.
+
+**All-time view** (see §6): instead of one row of raw Sundays, compute
+`progress_status()` for *every month* the group has existed, per member, then
+render one column per month with a simplified label:
+
+```
+alltime_status(member, year, month):
+  expected = expected_for_member(member, year, month)
+  actual = actual_for_member(member, year, month)
+  if actual >= expected:
+    return "Completed"
+  else:
+    return "Remaining ₱{expected - actual}"
+```
+
+**Summary stats ("Collected" / "Expected Collectibles")** — these are scoped
+to whatever is currently selected, not hardcoded to all-time:
+
+```
+if current view is a specific month (year, month):
+  Collected = sum(actual_for_member(m, year, month) for m in members)
+  Expected Collectibles = sum(expected_for_member(m, year, month) for m in members)
+
+if current view is "All time":
+  Collected = sum(actual_for_member(m, y, mo) for m in members, for every (y, mo) with data)
+  Expected Collectibles = sum(expected_for_member(m, y, mo) for m in members, for every (y, mo) since m.joined_date)
+```
 
 ## 8. Frontend Structure (suggested)
 
@@ -141,9 +176,10 @@ across all members for the selected month.
   /api/...                  -- routes from §4
 /components
   Header.tsx
-  StatsBar.tsx
-  YearMonthPicker.tsx        -- NEW: replaces MonthSelect.tsx
-  LedgerTable.tsx            -- month-filtered table, computed Sundays as columns
+  StatsBar.tsx               -- "Collected" / "Expected Collectibles" / Members, scoped to current view
+  YearMonthPicker.tsx        -- year chips + 12-month grid, plus "All time" toggle
+  LedgerTable.tsx            -- month view: Sundays as columns, per-member "Completed" / "₱X of ₱Y" column
+  AllTimeTable.tsx           -- NEW: all-time view, one column per month, "Completed" / "Remaining ₱Z" per member
   AmountEditModal.tsx        -- modal for entering a contribution amount (any date)
   MemberForm.tsx             -- add/edit member incl. joined_date
   PinModal.tsx               -- set-pin / login modal
@@ -176,3 +212,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SESSION_SECRET=
 ```
+
+## 12. Changelog (v2 → v3)
+- Added `progress_status()` — returns "Completed" or "₱X of ₱Y" per §7.
+- Added `alltime_status()` — returns "Completed" or "Remaining ₱Z" per §7,
+  used by the new `AllTimeTable.tsx` component (one column per month).
+- `/api/ledger?all=true` now returns pre-aggregated per-month rows instead of
+  raw per-Sunday data.
+- `StatsBar` — "Collected" and "Expected Collectibles" now compute from
+  whatever view is currently selected (a specific month, or all-time),
+  rather than always meaning the full history.

@@ -1,6 +1,33 @@
 # Tasks — Youth Fund Ledger
-_Revision 2 — you're picking this up mid-Phase 3. See "Phase 3 Revision" below
-before continuing._
+_Revision 3 — you're picking this up at Phase 5. See "Phase 5 Revision" below
+before continuing. (The older "Phase 3 Revision" note is kept below for
+history/reference.)_
+
+## ⚠️ Phase 5 Revision (read this first — you are here)
+Requirements/design changed again. See `requirements.md` §8 and `design.md`
+§12 for the full "why." Concretely:
+
+- [ ] In `LedgerTable.tsx` (month view), replace the always-shown "₱X of ₱Y"
+      per-member column with `progress_status()` from `design.md` §7 —
+      "Completed" (styled positively, e.g. green/checkmark) once actual ≥
+      expected, otherwise the existing "₱X of ₱Y"
+- [ ] Build `components/AllTimeTable.tsx` — one column per month (not per
+      Sunday), each cell using `alltime_status()`: "Completed" or
+      "Remaining ₱Z"
+- [ ] Update `GET /api/ledger?all=true` to return pre-aggregated
+      per-member-per-month rows (`{year, month, actual, expected, status}`)
+      instead of raw per-Sunday contributions — do the aggregation in the API
+      route, not client-side, to keep the payload small
+- [ ] Update `StatsBar.tsx`:
+      - [ ] Rename "All-Time Total" → "Collected"
+      - [ ] Add new "Expected Collectibles" stat
+      - [ ] Both must recompute based on the currently selected view (a
+            specific month vs. "All time") — verify by switching the picker
+            and confirming the numbers change
+- [ ] Verify: a member who has paid exactly or more than expected shows
+      "Completed" in both the month view and the all-time view for that month
+- [ ] Verify: switching between a specific month and "All time" updates
+      "Collected" and "Expected Collectibles" correctly in both directions
 
 ## ⚠️ Phase 3 Revision (read this first)
 Requirements/design changed while you were mid-build. If Amazon Q already

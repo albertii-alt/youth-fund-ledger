@@ -50,17 +50,25 @@ past or present.
   then a **12-box month grid** (Jan–Dec) below it.
 - FR-10: Defaults to the current year and current month on page load.
 - FR-11: Months that haven't happened yet (future) are visually disabled.
-- FR-12: An "All time" view is available showing every recorded month at once.
+- FR-12: An "All time" view is available. Rather than listing every individual
+  Sunday ever recorded (which becomes unwieldy after a year or two), it shows
+  **one column per month**, with each member's status per month as:
+  - **"Completed"** if that month's expected amount was met or exceeded
+  - **"Remaining ₱Z"** if not, where Z = expected − actual for that month
+  This mirrors the per-month progress logic in §3.4, just rolled up across
+  every month at once instead of showing individual Sundays.
 
 ### 3.4 Progress / Shortfall Display
-- FR-13: For the selected month, each member shows **"₱X of ₱Y"** where:
-  - X = sum of that member's actual contributions in the selected month
-  - Y = (Sundays in that month on/after their joined date, up to today) ×
-    (expected weekly amount)
+- FR-13: For the selected month, each member's progress is shown as:
+  - **"Completed"** (with a clear, positive visual treatment — e.g. green/
+    checkmark) when actual contributions ≥ expected amount for that month
+  - **"₱X of ₱Y"** when actual contributions are still less than expected,
+    where X = actual contributed so far, Y = expected amount for that month
 - FR-14: Phrased neutrally as a progress indicator, not as a red "shortfall" or
-  debt warning — avoid shaming language or styling.
-- FR-15: A month-wide summary shows total collected vs. total expected across
-  all members for the selected month.
+  debt warning — avoid shaming language or styling, even in the incomplete
+  state.
+- FR-15: A month-wide summary shows total collected vs. total expected
+  ("Expected Collectibles") across all members for the selected month.
 
 ### 3.5 Members (Treasurer only)
 - FR-16: Add a new member: name + joined date (defaults to today, editable).
@@ -69,9 +77,15 @@ past or present.
 - FR-18: Edit a member's joined date later if it was entered incorrectly.
 
 ### 3.6 Stats (always visible)
-- FR-19: All-time total collected (across all members, all months).
-- FR-20: Total number of members.
-- FR-21: Current month collected vs. expected (see 3.4).
+- FR-19: **"Collected"** — total amount actually contributed, scoped to
+  whatever is currently selected (a specific month, or the "All time" view).
+  This is a rename of the old "All-Time Total" and now dynamically follows
+  the current filter rather than always meaning the full history.
+- FR-19b: **"Expected Collectibles"** — total expected amount across all
+  members for the same scope as FR-19 (new stat).
+- FR-20: Total number of members (always reflects current membership,
+  regardless of month/view selected).
+- FR-21: (superseded by FR-13 — see §3.4 for per-member progress display)
 
 ### 3.7 Reporting
 - FR-22: A print-friendly view (admin controls hidden) for handing physical
@@ -122,3 +136,13 @@ past or present.
 - Explicitly scoped in: digitizing existing physical paper records via manual
   entry into past months.
 - Explicitly scoped out: bulk/CSV import (not worth it at current data volume).
+
+## 8. Changelog (v2 → v3)
+- Progress display now shows "Completed" once a member hits/exceeds their
+  expected amount for the month, instead of always showing "₱X of ₱Y".
+- "All time" view is no longer a giant per-Sunday table — it's one column
+  per month, with each member showing "Completed" or "Remaining ₱Z".
+- Renamed "All-Time Total" stat to "Collected."
+- Added a new "Expected Collectibles" stat.
+- Both "Collected" and "Expected Collectibles" now dynamically scope to
+  whatever month/view is currently selected, not always the full history.
