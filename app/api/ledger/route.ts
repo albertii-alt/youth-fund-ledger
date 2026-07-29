@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const [settingsRes, membersRes, contributionsRes] = await Promise.all([
     supabase.from('settings').select('*').single(),
-    supabase.from('members').select('*').order('joined_date'),
+    supabase.from('members').select('*').order('name'),
     supabase.from('contributions').select('*'),
   ]);
 
