@@ -1,143 +1,178 @@
 # Design — Youth Fund Ledger
+_Revision 2 — reflects auto-computed Sundays, member joined_date, and the
+year/month calendar picker. See requirements.md §7 for the "why."_
 
-## 1. Stack
+## 1. Stack (unchanged)
 - **Frontend/Backend**: Next.js (App Router), React, TypeScript
-- **Hosting**: Vercel (free tier) — Next.js API routes run as Vercel serverless
-  functions, so no separate backend server is needed
+- **Hosting**: Vercel (free tier)
 - **Database**: Supabase (free-tier hosted Postgres)
-- **Styling**: Plain CSS or Tailwind (either is fine — pick based on what's
-  fastest for you/Amazon Q to iterate with; examples below assume plain CSS
-  modules to keep the ledger/passbook visual style from the earlier prototype)
-- **Auth**: Custom PIN flow (see §4), no third-party auth provider needed
+- **Auth**: Custom PIN flow, no third-party auth provider
 
 ## 2. Data Model (Postgres / Supabase)
 
 ```sql
--- Single-row settings table (church name, expected weekly amount, hashed PIN)
 create table settings (
   id int primary key default 1,
   church_name text not null default 'Youth Ministry',
   expected_weekly_amount numeric(10,2) not null default 20,
-  pin_hash text,               -- null until treasurer sets it the first time
+  pin_hash text,
   constraint single_row check (id = 1)
 );
 
 create table members (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  joined_date date not null default current_date,  -- NEW: editable by treasurer
   created_at timestamptz not null default now()
 );
 
-create table sundays (
-  id uuid primary key default gen_random_uuid(),
-  the_date date not null unique,   -- e.g. 2026-08-02
-  created_at timestamptz not null default now()
-);
+-- NOTE: the old `sundays` table is REMOVED. Sundays are computed in
+-- application code, not stored.
 
 create table contributions (
   member_id uuid not null references members(id) on delete cascade,
-  sunday_id uuid not null references sundays(id) on delete cascade,
+  contribution_date date not null,   -- must be a Sunday; validate in API layer
   amount numeric(10,2) not null default 0,
   updated_at timestamptz not null default now(),
-  primary key (member_id, sunday_id)
+  primary key (member_id, contribution_date)
 );
 ```
 
-Notes:
-- `contributions` has no row until an amount is actually entered — treat
-  "no row" the same as ₱0 (not yet paid) in the UI.
-- `amount` is a plain positive number; there is no fixed weekly rate enforced
-  at the DB level (flexibility is core to FR-1).
-- Row Level Security (RLS): enable RLS on all tables. Public (anon) role gets
-  `SELECT` only. Writes only happen through server-side API routes using the
-  Supabase **service role key** (never exposed to the browser).
+If you already ran the v1 schema (with a `sundays` table) as part of Phase 3:
+```sql
+-- Migration from v1 schema
+alter table members add column joined_date date not null default current_date;
+alter table contributions add column contribution_date date;
+update contributions c set contribution_date = s.the_date
+  from sundays s where s.id = c.sunday_id;
+alter table contributions drop column sunday_id;
+alter table contributions alter column contribution_date set not null;
+alter table contributions add primary key (member_id, contribution_date);
+drop table sundays;
+```
 
-## 3. API Routes (Next.js `/app/api/...`)
+Notes:
+- No row in `contributions` for a given `(member, date)` = not yet paid (₱0),
+  same as before.
+- RLS: enable on all tables. Public (anon) role gets `SELECT` only. All writes
+  go through server-side API routes using the Supabase service role key.
+
+## 3. Sunday Calculation (application logic, not DB)
+
+```ts
+// Returns all Sundays in a given year/month that are <= today
+function sundaysInMonth(year: number, month: number /* 1-12 */): Date[] {
+  const today = new Date();
+  const result: Date[] = [];
+  const d = new Date(year, month - 1, 1);
+  // advance to first Sunday of the month
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  while (d.getMonth() === month - 1) {
+    if (d <= today) result.push(new Date(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return result;
+}
+```
+
+A month is "not started yet" when `sundaysInMonth` returns an empty array AND
+the month is in the future relative to today — the UI should distinguish this
+from a past month that simply has zero contributions recorded.
+
+## 4. API Routes (Next.js `/app/api/...`)
 
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
-| `/api/ledger` | GET | public | Returns members, sundays, contributions, settings (for a given month or "all") |
-| `/api/auth/set-pin` | POST | public (only works if no PIN set yet) | First-time PIN setup |
+| `/api/ledger?year=YYYY&month=MM` | GET | public | Members, computed Sundays for that month, contributions, settings |
+| `/api/ledger?all=true` | GET | public | All-time view across every month with data |
+| `/api/auth/set-pin` | POST | public (only if no PIN set) | First-time PIN setup |
 | `/api/auth/login` | POST | public | Verify PIN, issue session cookie |
 | `/api/auth/logout` | POST | session | Clear session cookie |
-| `/api/members` | POST | session | Add member |
+| `/api/members` | POST | session | Add member `{ name, joined_date }` |
+| `/api/members/:id` | PATCH | session | Edit member (e.g. fix joined_date) |
 | `/api/members/:id` | DELETE | session | Remove member |
-| `/api/sundays` | POST | session | Add next Sunday |
-| `/api/sundays/:id` | DELETE | session | Remove a Sunday |
-| `/api/contributions` | PUT | session | Upsert `{ member_id, sunday_id, amount }` |
+| `/api/contributions` | PUT | session | Upsert `{ member_id, contribution_date, amount }` |
 
-All session-protected routes check an httpOnly cookie (see §4) server-side
-before touching the database with the service role key.
+**Removed from v1**: `/api/sundays` and `/api/sundays/:id` — no longer needed.
 
-## 4. Auth Flow (PIN)
+## 5. Auth Flow (unchanged from v1)
 1. Treasurer clicks "Treasurer Login."
-2. Client checks `settings.pin_hash`:
-   - If null → show "Set PIN" form → `POST /api/auth/set-pin` hashes
-     (bcrypt, cost 10+) and stores it.
-   - If set → show "Enter PIN" form → `POST /api/auth/login` compares
-     bcrypt hash.
-3. On success, server sets an httpOnly, `Secure`, `SameSite=Lax` cookie
-   containing a signed session token (e.g. via `jose`/JWT or a simple
-   random token stored in a `sessions` table with an expiry — either is
-   fine given the low stakes; a signed JWT avoids needing a sessions table).
-4. Session expires after a reasonable window (e.g. 8 hours) so a shared
-   device doesn't stay unlocked indefinitely.
-5. "Lock" button clears the cookie client-side and calls `/api/auth/logout`.
+2. If `settings.pin_hash` is null → set-PIN form → bcrypt hash stored.
+3. Else → PIN form → bcrypt compare → httpOnly, Secure, SameSite=Lax session
+   cookie (signed JWT or equivalent) on success.
+4. Session expires after ~8 hours.
+5. "Lock" clears the cookie.
 
-## 5. Month Filtering Logic (client or API param)
-- Group `sundays` by `to_char(the_date, 'YYYY-MM')`.
-- Dropdown options = distinct months present in `sundays`, plus the current
-  month (even if it has zero Sundays yet), sorted ascending, defaulting to
-  the current month. Include an "All time" option.
-- For the selected month:
-  - `expected_total_per_member = (# sundays in that month) × expected_weekly_amount`
-  - `actual_total_per_member = sum(contributions.amount)` for that member
-    within that month's sundays
-  - Progress label: `₱{actual} of ₱{expected}`
+## 6. Month/Year Navigation (replaces the old dropdown)
 
-## 6. Frontend Structure (suggested)
+- **Year selector**: a small row of buttons/chips, one per year that has at
+  least one member `joined_date` or contribution, plus the current year.
+- **Month grid**: 12 boxes (Jan–Dec) under the year selector.
+  - Highlighted: currently selected month.
+  - Disabled (grayed, not clickable): months entirely in the future.
+  - Normal: past/current months, even if they have zero data yet — a past
+    month with nothing recorded is a valid, real state (nobody's paid
+    anything yet that month), not an error.
+- Defaults to current year + current month on first load.
+- An "All time" toggle/button switches to the aggregate view (FR-12).
+
+## 7. Expected/Progress Calculation
+
+```
+expected_for_member(member, year, month) =
+  count(sundaysInMonth(year, month) where sunday >= member.joined_date)
+  × settings.expected_weekly_amount
+
+actual_for_member(member, year, month) =
+  sum(contributions.amount where member_id = member.id
+      and contribution_date in sundaysInMonth(year, month))
+
+progress_label = "₱{actual} of ₱{expected}"
+```
+
+Month-wide summary = sum of `actual_for_member` and `expected_for_member`
+across all members for the selected month.
+
+## 8. Frontend Structure (suggested)
 
 ```
 /app
   /page.tsx                 -- public ledger view (default landing page)
-  /api/...                  -- routes from §3
+  /api/...                  -- routes from §4
 /components
   Header.tsx
   StatsBar.tsx
-  MonthSelect.tsx
-  ThisWeekPanel.tsx          -- treasurer-only quick entry for latest Sunday
-  LedgerTable.tsx            -- month-filtered table with editable cells
-  AmountEditModal.tsx        -- modal for entering a contribution amount
-  PinModal.tsx                -- set-pin / login modal
+  YearMonthPicker.tsx        -- NEW: replaces MonthSelect.tsx
+  LedgerTable.tsx            -- month-filtered table, computed Sundays as columns
+  AmountEditModal.tsx        -- modal for entering a contribution amount (any date)
+  MemberForm.tsx             -- add/edit member incl. joined_date
+  PinModal.tsx               -- set-pin / login modal
 /lib
-  supabaseClient.ts           -- public (anon key) client for reads
-  supabaseAdmin.ts            -- service-role client, server-only
-  auth.ts                      -- session cookie helpers
+  supabaseClient.ts
+  supabaseAdmin.ts
+  auth.ts
+  dates.ts                   -- NEW: sundaysInMonth() and related helpers
 ```
 
-## 7. Visual Style (carried over from prototype, for consistency)
-- Ledger/passbook aesthetic: warm paper background, ruled-paper lines,
-  serif display font (e.g. Fraunces) for headings, monospace (e.g. Space
-  Mono) for numbers/dates.
-- "Stamp" visual for a recorded contribution amount (pill-shaped, brass
-  color), dashed empty circle for not-yet-paid.
-- Keep admin controls visually distinct (brass accent) from public/read-only
-  chrome (pine green).
+## 9. Visual Style (unchanged)
+Ledger/passbook aesthetic: warm paper background, ruled-paper lines, serif
+display font (e.g. Fraunces) for headings, monospace (e.g. Space Mono) for
+numbers/dates. Brass "stamp" for a recorded amount, dashed empty circle for
+not-yet-paid. Admin controls visually distinct (brass) from public/read-only
+chrome (pine green).
 
-## 8. Security Notes
-- Never expose the Supabase service role key to the client — only use it
-  inside API routes (server-side).
-- Public/anon Supabase key only ever has read (`SELECT`) access via RLS.
-- Rate-limit `/api/auth/login` (e.g. simple in-memory or Vercel KV counter)
-  to slow down PIN brute-forcing.
-- Sanitize member names on input (basic length limit, strip HTML) before
-  storage/display.
+## 10. Security Notes (unchanged)
+- Never expose the Supabase service role key to the client.
+- Public/anon key only ever has `SELECT` access via RLS.
+- Rate-limit `/api/auth/login`.
+- Sanitize member names on input (length limit, strip HTML).
+- Validate that `contribution_date` submitted to `/api/contributions` is
+  actually a Sunday and not in the future, server-side.
 
-## 9. Environment Variables
-
+## 11. Environment Variables (unchanged)
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=      # server-only, never prefixed with NEXT_PUBLIC_
-SESSION_SECRET=                 # for signing the JWT/session cookie
+SUPABASE_SERVICE_ROLE_KEY=
+SESSION_SECRET=
 ```
