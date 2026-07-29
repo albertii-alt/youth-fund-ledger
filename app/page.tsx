@@ -157,6 +157,8 @@ export default function Home() {
         </div>
       </header>
 
+      <p className="record-notice">📋 Contribution records started June 2026</p>
+
       <StatsBar
         collected={collected}
         expectedCollectibles={expectedCollectibles}
