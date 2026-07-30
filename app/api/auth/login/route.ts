@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { ipAddress } from '@vercel/functions';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { signSession, COOKIE_NAME } from '@/lib/auth';
 
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
-// req.ip is set by Vercel's edge and is not client-spoofable.
-// x-real-ip is the fallback for other environments.
 function getClientIp(req: NextRequest): string {
-  return req.ip ?? req.headers.get('x-real-ip') ?? 'unknown';
+  return ipAddress(req) ?? 'unknown';
 }
 
 // Single atomic round-trip: no read-then-write race condition.
