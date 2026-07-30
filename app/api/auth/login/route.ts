@@ -3,24 +3,39 @@ import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { signSession, COOKIE_NAME } from '@/lib/auth';
 
-// Simple in-memory rate limiter: max 5 attempts per IP per 15 minutes
-const attempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now > entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+async function isRateLimited(ip: string): Promise<boolean> {
+  const now = new Date();
+  const { data } = await supabaseAdmin
+    .from('login_attempts')
+    .select('count, reset_at')
+    .eq('ip', ip)
+    .single();
+
+  if (!data || new Date(data.reset_at) <= now) {
+    // No record or window expired — reset
+    await supabaseAdmin.from('login_attempts').upsert({
+      ip,
+      count: 1,
+      reset_at: new Date(Date.now() + WINDOW_MS).toISOString(),
+    });
     return false;
   }
-  if (entry.count >= 5) return true;
-  entry.count++;
+
+  if (data.count >= MAX_ATTEMPTS) return true;
+
+  await supabaseAdmin
+    .from('login_attempts')
+    .update({ count: data.count + 1 })
+    .eq('ip', ip);
   return false;
 }
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
-  if (isRateLimited(ip)) {
+  if (await isRateLimited(ip)) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
