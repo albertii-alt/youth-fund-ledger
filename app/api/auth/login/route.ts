@@ -6,35 +6,22 @@ import { signSession, COOKIE_NAME } from '@/lib/auth';
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
+// req.ip is set by Vercel's edge and is not client-spoofable.
+// x-real-ip is the fallback for other environments.
+function getClientIp(req: NextRequest): string {
+  return req.ip ?? req.headers.get('x-real-ip') ?? 'unknown';
+}
+
+// Single atomic round-trip: no read-then-write race condition.
 async function isRateLimited(ip: string): Promise<boolean> {
-  const now = new Date();
-  const { data } = await supabaseAdmin
-    .from('login_attempts')
-    .select('count, reset_at')
-    .eq('ip', ip)
-    .single();
-
-  if (!data || new Date(data.reset_at) <= now) {
-    // No record or window expired — reset
-    await supabaseAdmin.from('login_attempts').upsert({
-      ip,
-      count: 1,
-      reset_at: new Date(Date.now() + WINDOW_MS).toISOString(),
-    });
-    return false;
-  }
-
-  if (data.count >= MAX_ATTEMPTS) return true;
-
-  await supabaseAdmin
-    .from('login_attempts')
-    .update({ count: data.count + 1 })
-    .eq('ip', ip);
-  return false;
+  const { data, error } = await supabaseAdmin
+    .rpc('check_rate_limit', { client_ip: ip, max_attempts: MAX_ATTEMPTS, window_ms: WINDOW_MS });
+  if (error) return false; // fail open — don't lock out on DB errors
+  return data === true;
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const ip = getClientIp(req);
   if (await isRateLimited(ip)) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
