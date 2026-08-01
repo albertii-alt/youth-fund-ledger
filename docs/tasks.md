@@ -1,7 +1,36 @@
 # Tasks — Youth Fund Ledger
-_Revision 3 — you're picking this up at Phase 5. See "Phase 5 Revision" below
-before continuing. (The older "Phase 3 Revision" note is kept below for
-history/reference.)_
+_Revision 4 — you're picking this up post-deploy, live in production. See
+"Post-Deploy Revision" below before continuing. (Older revision notes are
+kept below for history/reference.)_
+
+## ⚠️ Post-Deploy Revision (read this first — you are here)
+Requirements/design changed again after going live. See `requirements.md` §9
+and `design.md` §13 for the full "why."
+
+- [ ] Update `sundaysInMonth()` in `lib/dates.ts` to return every Sunday in a
+      started month, not just ones `<= today` — per `design.md` §3
+- [ ] Replace the `isFuture()` check in `/api/contributions` with the new
+      `isInUnstartedMonth()` per `design.md` §3a — this is what actually
+      unblocks entering an amount for a Sunday later in the current month
+- [ ] Update `expected_for_member()` (wherever it's implemented — likely
+      `lib/ledger.ts` or inline in the API route) to count the full month's
+      Sundays, not just elapsed ones, per `design.md` §7
+- [ ] Double check `LedgerTable.tsx` renders every Sunday column returned by
+      `sundaysInMonth()` — it should already do this correctly since it just
+      maps over whatever the function returns; the bug was in the function
+      itself, not the table rendering
+- [ ] Verify: opening the current month on day 1 immediately shows all of
+      that month's Sunday columns, not just one
+- [ ] Verify: clicking a cell for a Sunday later this month (that hasn't
+      happened yet) opens the amount editor and successfully saves
+- [ ] Verify: a member's "Expected" for the current month shows the full
+      month's amount immediately (e.g. ₱80 for a 4-Sunday month), not a
+      number that grows as weeks pass
+- [ ] Verify: entering a future Sunday's amount immediately updates
+      "Collected" and the member's progress status correctly
+- [ ] Confirm a genuinely future month (not yet started) is still disabled
+      in the year/month picker and still rejected server-side if someone
+      tries to submit a contribution for it directly
 
 ## ⚠️ Phase 5 Revision (read this first — you are here)
 Requirements/design changed again. See `requirements.md` §8 and `design.md`

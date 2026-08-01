@@ -1,5 +1,5 @@
 # Requirements — Youth Fund Ledger
-_Revision 2 — see "Changelog" at bottom for what changed from v1 and why._
+_Revision 4 — see "Changelog" at bottom for what changed from v1 and why._
 
 ## 1. Overview
 A transparent, public web ledger for tracking a church youth group's weekly Sunday
@@ -26,14 +26,17 @@ past or present.
 - FR-1: Each member's contribution for each Sunday is a **flexible peso amount**
   — members may pay less, more, or exactly the suggested amount.
 - FR-2: The suggested/expected weekly amount (default ₱20) is configurable.
-- FR-3: Treasurer can enter, edit, or clear a member's amount for **any Sunday**,
-  including past dates — this is how historical paper records get digitized.
+- FR-3: Treasurer can enter, edit, or clear a member's amount for **any Sunday
+  in a month that has started** — past, present, or a later Sunday still to
+  come this month (e.g. entering an advance payment). This is also how
+  historical paper records get digitized.
 - FR-4: **Sundays are calculated automatically, never manually added.** Given a
   month, the app derives every Sunday in it via date math. There is no
   "add a Sunday" step for the treasurer.
-- FR-5: Only Sundays up to and including today are shown/editable. A month that
-  hasn't started yet shows a "this month hasn't happened yet" state instead of
-  empty rows.
+- FR-5: **Every Sunday in a started month (current or past) is shown and
+  editable from day one of that month** — not revealed progressively as each
+  Sunday occurs. A month that hasn't started yet is not selectable at all
+  (see §3.3) rather than shown empty.
 
 ### 3.2 Historical Data
 - FR-6: The treasurer can navigate to any past month and enter contribution
@@ -41,9 +44,11 @@ past or present.
 - FR-7: Each member has a **joined date**, set by the treasurer (defaults to
   today when the member is added, but editable to backdate it to when they
   actually started contributing per the paper records).
-- FR-8: A member's "expected" total for a given month only counts Sundays on
-  or after their joined date — so nobody appears to owe money for weeks before
-  they were part of the group.
+- FR-8: A member's "expected" total for a given month counts **every Sunday
+  in that month on or after their joined date** — including Sundays later in
+  the month that haven't happened yet. This means the expected amount for a
+  month is fixed from day one (the full month's worth), not something that
+  grows week by week as Sundays pass.
 
 ### 3.3 Year / Month Navigation
 - FR-9: Navigation is a two-step calendar-style picker: a **year selector**,
@@ -67,6 +72,11 @@ past or present.
 - FR-14: Phrased neutrally as a progress indicator, not as a red "shortfall" or
   debt warning — avoid shaming language or styling, even in the incomplete
   state.
+- FR-14b: Because "expected" now includes the whole month upfront (FR-8), a
+  member typically won't show "Completed" until they've paid for every
+  Sunday in the month, including ones still to come — this is expected
+  behavior, not a bug. Advance/early payment is how a member reaches
+  "Completed" before the month ends.
 - FR-15: A month-wide summary shows total collected vs. total expected
   ("Expected Collectibles") across all members for the selected month.
 
@@ -146,3 +156,14 @@ past or present.
 - Added a new "Expected Collectibles" stat.
 - Both "Collected" and "Expected Collectibles" now dynamically scope to
   whatever month/view is currently selected, not always the full history.
+
+## 9. Changelog (v3 → v4)
+- All Sundays in a started month (current or past) now show and are editable
+  from day one — previously they were revealed one at a time as each Sunday's
+  date passed.
+- Treasurer can now enter advance/early payments for a Sunday later in the
+  current month that hasn't happened yet.
+- "Expected" for a month now counts the full month's Sundays upfront (on/after
+  the member's joined date), not just Sundays that have occurred so far. This
+  was an explicit choice — see FR-8 and FR-14b for the reasoning and the
+  resulting effect on when "Completed" appears.

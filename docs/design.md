@@ -1,5 +1,5 @@
 # Design — Youth Fund Ledger
-_Revision 2 — reflects auto-computed Sundays, member joined_date, and the
+_Revision 4 — reflects auto-computed Sundays, member joined_date, and the
 year/month calendar picker. See requirements.md §7 for the "why."_
 
 ## 1. Stack (unchanged)
@@ -60,24 +60,61 @@ Notes:
 ## 3. Sunday Calculation (application logic, not DB)
 
 ```ts
-// Returns all Sundays in a given year/month that are <= today
+// Returns EVERY Sunday in a given year/month — no longer filtered by
+// "has this specific Sunday happened yet." A month either has started
+// (return all its Sundays) or hasn't (don't call this for it at all —
+// the year/month picker already prevents selecting unstarted months).
+//
+// Uses todayInPHT() (see lib/dates.ts, added when fixing the timezone bug)
+// so "is this month startable" is evaluated in Philippine time, not UTC.
 function sundaysInMonth(year: number, month: number /* 1-12 */): Date[] {
-  const today = new Date();
+  const today = todayInPHT();
+  const isFutureMonth =
+    year > today.getFullYear() ||
+    (year === today.getFullYear() && month - 1 > today.getMonth());
+  if (isFutureMonth) return [];
+
   const result: Date[] = [];
   const d = new Date(year, month - 1, 1);
-  // advance to first Sunday of the month
-  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); // first Sunday of month
   while (d.getMonth() === month - 1) {
-    if (d <= today) result.push(new Date(d));
+    result.push(new Date(d)); // no more `if (d <= today)` filter — include
+                               // every Sunday in a started month, past or
+                               // still to come
     d.setDate(d.getDate() + 7);
   }
   return result;
 }
 ```
 
-A month is "not started yet" when `sundaysInMonth` returns an empty array AND
-the month is in the future relative to today — the UI should distinguish this
-from a past month that simply has zero contributions recorded.
+A month is "not started yet" when `year`/`month` is after the current
+Philippine-time year/month — the year/month picker (§6) already disables
+selecting such a month, so the UI should never call this for one. A **started**
+month (current or past) always returns its full set of Sundays, regardless of
+whether individual ones have occurred yet.
+
+## 3a. Contribution Date Validation (server-side, replaces old `isFuture()`)
+
+The old rule ("reject any `contribution_date` after today") is gone — it's
+what used to block entering an advance payment for a Sunday later in the
+current month. The new rule only blocks a date whose **month** hasn't
+started, not a date later **within** the current month:
+
+```ts
+// Replaces the old day-level isFuture() check
+function isInUnstartedMonth(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T00:00:00');
+  const today = todayInPHT();
+  return (
+    d.getFullYear() > today.getFullYear() ||
+    (d.getFullYear() === today.getFullYear() && d.getMonth() > today.getMonth())
+  );
+}
+```
+
+`/api/contributions` should still validate `isSunday(contribution_date)`
+(unchanged) and now `!isInUnstartedMonth(contribution_date)` instead of the
+old `!isFuture(contribution_date)`.
 
 ## 4. API Routes (Next.js `/app/api/...`)
 
@@ -126,10 +163,15 @@ from a past month that simply has zero contributions recorded.
 expected_for_member(member, year, month) =
   count(sundaysInMonth(year, month) where sunday >= member.joined_date)
   × settings.expected_weekly_amount
+  // NOTE: sundaysInMonth() now returns the FULL month (§3), so this is the
+  // whole month's expected amount from day one — it no longer grows week by
+  // week as Sundays pass. See requirements.md FR-8 / FR-14b for the "why."
 
 actual_for_member(member, year, month) =
   sum(contributions.amount where member_id = member.id
       and contribution_date in sundaysInMonth(year, month))
+  // unaffected by this change — still just sums whatever's been entered,
+  // including any advance payments for Sundays later in the month
 
 progress_status(member, year, month):
   if actual_for_member >= expected_for_member:
@@ -212,6 +254,19 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SESSION_SECRET=
 ```
+
+## 13. Changelog (v3 → v4)
+- `sundaysInMonth()` (§3) no longer filters out Sundays that haven't happened
+  yet — a started month (current or past) always returns its complete list
+  of Sundays.
+- The old `isFuture()` day-level check on `/api/contributions` is replaced by
+  `isInUnstartedMonth()` (§3a) — it only blocks dates in a month that hasn't
+  started, allowing advance payments for later Sundays in the current month.
+- `expected_for_member()` (§7) now counts the whole month's Sundays upfront
+  instead of only ones that have occurred — this was an explicit product
+  decision (Option B), not a bug; see requirements.md FR-8/FR-14b.
+- Both `todayInPHT()` calls above reuse the same helper added when fixing the
+  earlier UTC/timezone bug — no new timezone logic needed here.
 
 ## 12. Changelog (v2 → v3)
 - Added `progress_status()` — returns "Completed" or "₱X of ₱Y" per §7.
