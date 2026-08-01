@@ -8,11 +8,17 @@ function todayInPHT(): Date {
 
 export function sundaysInMonth(year: number, month: number): Date[] {
   const today = todayInPHT();
+  // Return nothing for a month that hasn't started yet in PHT.
+  // The picker already prevents selecting such months, but guard here too.
+  if (year > today.getFullYear() ||
+      (year === today.getFullYear() && month - 1 > today.getMonth())) {
+    return [];
+  }
   const result: Date[] = [];
   const d = new Date(year, month - 1, 1);
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
   while (d.getMonth() === month - 1) {
-    if (d <= today) result.push(new Date(d));
+    result.push(new Date(d)); // include every Sunday — no day-level filter
     d.setDate(d.getDate() + 7);
   }
   return result;
@@ -31,4 +37,15 @@ export function isSunday(dateStr: string): boolean {
 
 export function isFuture(dateStr: string): boolean {
   return new Date(dateStr + 'T00:00:00') > todayInPHT();
+}
+
+// Blocks dates whose month hasn't started yet (per design.md §3a).
+// Does NOT block a Sunday later in the current month — that's an advance payment.
+export function isInUnstartedMonth(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T00:00:00');
+  const today = todayInPHT();
+  return (
+    d.getFullYear() > today.getFullYear() ||
+    (d.getFullYear() === today.getFullYear() && d.getMonth() > today.getMonth())
+  );
 }

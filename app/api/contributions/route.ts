@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { requireSession } from '@/lib/requireSession';
-import { isSunday, isFuture } from '@/lib/dates';
+import { isSunday, isInUnstartedMonth } from '@/lib/dates';
 
 export async function PUT(req: NextRequest) {
   if (!await requireSession(req)) {
@@ -16,8 +16,8 @@ export async function PUT(req: NextRequest) {
   if (!isSunday(contribution_date)) {
     return NextResponse.json({ error: 'contribution_date must be a Sunday' }, { status: 400 });
   }
-  if (isFuture(contribution_date)) {
-    return NextResponse.json({ error: 'contribution_date cannot be in the future' }, { status: 400 });
+  if (isInUnstartedMonth(contribution_date)) {
+    return NextResponse.json({ error: 'contribution_date cannot be in a month that has not started yet' }, { status: 400 });
   }
 
   const parsed = parseFloat(amount);
