@@ -1,6 +1,13 @@
+function todayInPHT(): Date {
+  // Resolve "today" in Philippine Time (UTC+8) so overnight UTC≠PHT windows
+  // don't cause the server to treat the current PHT day as still yesterday.
+  const phtDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const [y, m, d] = phtDateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999);
+}
+
 export function sundaysInMonth(year: number, month: number): Date[] {
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
+  const today = todayInPHT();
   const result: Date[] = [];
   const d = new Date(year, month - 1, 1);
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
@@ -23,5 +30,5 @@ export function isSunday(dateStr: string): boolean {
 }
 
 export function isFuture(dateStr: string): boolean {
-  return new Date(dateStr + 'T00:00:00') > new Date();
+  return new Date(dateStr + 'T00:00:00') > todayInPHT();
 }

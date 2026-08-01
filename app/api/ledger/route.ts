@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabaseClient';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
@@ -34,8 +35,8 @@ export async function GET(req: NextRequest) {
     const ymSet = new Set<string>();
     for (const c of allContributions) ymSet.add(c.contribution_date.slice(0, 7));
     for (const m of members) ymSet.add(m.joined_date.slice(0, 7));
-    const today = new Date();
-    ymSet.add(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
+    const phtNow = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+    ymSet.add(phtNow.slice(0, 7));
 
     const months = Array.from(ymSet).sort();
 
