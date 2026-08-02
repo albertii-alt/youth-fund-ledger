@@ -1,7 +1,51 @@
 # Tasks — Youth Fund Ledger
-_Revision 4 — you're picking this up post-deploy, live in production. See
-"Post-Deploy Revision" below before continuing. (Older revision notes are
-kept below for history/reference.)_
+_Revision 5 — you're picking this up live in production, post the full-month-
+Sundays fix. See "Post-Deploy Revision 2" below before continuing. (Older
+revision notes kept below for history/reference.)_
+
+## ⚠️ Post-Deploy Revision 2 (read this first — you are here)
+See `requirements.md` §10 and `design.md` §14. This is a real schema change
+(additive only) plus new features — confirm the migration with yourself
+before running it, since the app is live with real data.
+
+- [ ] Run the additive migration: `alter table members add column left_date date;`
+      (see `design.md` §2 — safe, no backfill needed, existing rows get `null`)
+- [ ] Remove `DELETE /api/members/:id` entirely
+- [ ] Add `PATCH /api/members/:id` support for `{ left_date }` — used for both
+      "Mark as Left" (sets a date) and "Reactivate" (sets `null`)
+- [ ] Update `expected_for_member()` wherever implemented to bound by
+      `left_date` as well as `joined_date`, per `design.md` §7
+- [ ] Add `is_sunday_editable_for_member()` and use it in **both** places:
+      - [ ] `LedgerTable.tsx` — locked cells render as "N/A", not an empty
+            editable stamp
+      - [ ] `/api/contributions` PUT handler — reject the write server-side
+            too, don't just rely on the UI hiding the option
+- [ ] Add `is_member_active_in_month()` and use it in `LedgerTable.tsx` to
+      decide which member rows appear for a given month at all
+- [ ] Update "Mark as Left" UI: replace the old delete-confirmation dialog
+      with a date picker (defaults to today) that calls the new PATCH route
+- [ ] Add a "Reactivate" button/action for any member with a `left_date` set
+- [ ] Update `StatsBar.tsx`'s "Total Members" count to exclude members whose
+      `left_date` has passed
+- [ ] Build `GET /api/members/:id` — returns one member's all-time total and
+      month-by-month breakdown
+- [ ] Build `app/members/[id]/page.tsx` (`MemberProfile.tsx`) — public,
+      read-only, reuses the "Completed"/"₱X of ₱Y"/"Remaining ₱Z" display
+      logic already built for the main ledger
+- [ ] Build `GET /api/members/search?q=` — partial name match, returns only
+      `{ id, name }` pairs (nothing else)
+- [ ] Build `MemberSearch.tsx` — "Find my record" box on the main page,
+      navigates to the matched member's profile page
+- [ ] Verify: marking someone as left mid-month still shows them (and counts
+      their expected/actual correctly) for that month, but they're gone from
+      next month's table entirely
+- [ ] Verify: a locked ("N/A") cell cannot be edited from the UI, and a direct
+      API call to `/api/contributions` for that same (member, date) pair is
+      also rejected
+- [ ] Verify: reactivating a member restores them to current-month views
+      without creating a duplicate or losing old history
+- [ ] Verify: the name search finds a member and takes you to a working
+      profile page showing correct totals
 
 ## ⚠️ Post-Deploy Revision (read this first — you are here)
 Requirements/design changed again after going live. See `requirements.md` §9

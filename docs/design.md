@@ -1,5 +1,5 @@
 # Design — Youth Fund Ledger
-_Revision 4 — reflects auto-computed Sundays, member joined_date, and the
+_Revision 5 — reflects auto-computed Sundays, member joined_date, and the
 year/month calendar picker. See requirements.md §7 for the "why."_
 
 ## 1. Stack (unchanged)
@@ -22,7 +22,10 @@ create table settings (
 create table members (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  joined_date date not null default current_date,  -- NEW: editable by treasurer
+  joined_date date not null default current_date,
+  left_date date,              -- NEW: null = still active. Set by "Mark as
+                                -- Left," cleared by "Reactivate." Never
+                                -- triggers any delete.
   created_at timestamptz not null default now()
 );
 
@@ -49,6 +52,14 @@ alter table contributions drop column sunday_id;
 alter table contributions alter column contribution_date set not null;
 alter table contributions add primary key (member_id, contribution_date);
 drop table sundays;
+```
+
+**This app is now live in production with real data** — the v4→v5 migration
+is additive only, safe to run without touching any existing rows:
+```sql
+alter table members add column left_date date;
+-- No backfill needed: existing members simply have left_date = null,
+-- meaning "still active," which is correct for all of them.
 ```
 
 Notes:
@@ -126,9 +137,15 @@ old `!isFuture(contribution_date)`.
 | `/api/auth/login` | POST | public | Verify PIN, issue session cookie |
 | `/api/auth/logout` | POST | session | Clear session cookie |
 | `/api/members` | POST | session | Add member `{ name, joined_date }` |
-| `/api/members/:id` | PATCH | session | Edit member (e.g. fix joined_date) |
-| `/api/members/:id` | DELETE | session | Remove member |
-| `/api/contributions` | PUT | session | Upsert `{ member_id, contribution_date, amount }` |
+| `/api/members/:id` | PATCH | session | Edit member (`joined_date`, `left_date`) — used for both "Mark as Left" (`{ left_date: <date> }`) and "Reactivate" (`{ left_date: null }`) |
+| `/api/members/:id` | GET | public | Single member's profile: name, joined_date, left_date, all-time total, month-by-month breakdown (powers `/members/{id}`) |
+| `/api/members/search?q=` | GET | public | Name search (partial match) for the "Find my record" box — returns `{ id, name }` matches only, nothing sensitive |
+| `/api/contributions` | PUT | session | Upsert `{ member_id, contribution_date, amount }` — server must also reject if `!is_sunday_editable_for_member()` (§7), not just check the date is a real Sunday |
+
+**Removed in v5**: `DELETE /api/members/:id` — hard delete is gone. Use
+`PATCH` with `left_date` instead. (The DB-level `on delete cascade` on
+`contributions.member_id` can stay as a safety net for manual/direct DB
+cleanup — the app itself should never trigger it.)
 
 **Removed from v1**: `/api/sundays` and `/api/sundays/:id` — no longer needed.
 
@@ -161,23 +178,44 @@ old `!isFuture(contribution_date)`.
 
 ```
 expected_for_member(member, year, month) =
-  count(sundaysInMonth(year, month) where sunday >= member.joined_date)
-  × settings.expected_weekly_amount
-  // NOTE: sundaysInMonth() now returns the FULL month (§3), so this is the
-  // whole month's expected amount from day one — it no longer grows week by
-  // week as Sundays pass. See requirements.md FR-8 / FR-14b for the "why."
+  count(sundaysInMonth(year, month) where
+    sunday >= member.joined_date
+    and (member.left_date is null or sunday <= member.left_date)
+  ) × settings.expected_weekly_amount
+  // NOTE: sundaysInMonth() returns the FULL month (§3). Bounded on both ends
+  // now: joined_date at the start, left_date at the end (if set). A member
+  // who leaves mid-month still gets full credit for Sundays that occurred
+  // while active — Sundays after left_date simply aren't counted.
 
 actual_for_member(member, year, month) =
   sum(contributions.amount where member_id = member.id
       and contribution_date in sundaysInMonth(year, month))
-  // unaffected by this change — still just sums whatever's been entered,
-  // including any advance payments for Sundays later in the month
+  // unaffected — still just sums whatever's been entered
+
+is_sunday_editable_for_member(member, sunday) =
+  sunday >= member.joined_date
+  and (member.left_date is null or sunday <= member.left_date)
+  // Used by the UI/API to lock cells outside a member's active window.
+  // A locked cell renders as "N/A", not an empty editable stamp, and
+  // `/api/contributions` should reject a write for a non-editable
+  // (member, sunday) pair server-side too — not just hide it in the UI.
 
 progress_status(member, year, month):
   if actual_for_member >= expected_for_member:
     return "Completed"
   else:
     return "₱{actual_for_member} of ₱{expected_for_member}"
+
+is_member_active_in_month(member, year, month) =
+  // Whether the member's ROW appears at all in that month's table —
+  // separate from is_sunday_editable_for_member, which governs individual
+  // cells once the row is shown.
+  member.joined_date <= (last day of year/month)
+  and (member.left_date is null or member.left_date >= (first day of year/month))
+  // A member who leaves partway through August still passes this check for
+  // August (their left_date is within/after August's start) but fails it
+  // for September onward — this is what makes them "quietly disappear"
+  // starting the month after they leave, per requirements.md FR-17b.
 ```
 
 **Month view**: each member's cell in the summary column uses
@@ -215,21 +253,26 @@ if current view is "All time":
 ```
 /app
   /page.tsx                 -- public ledger view (default landing page)
+  /members/[id]/page.tsx    -- NEW: public per-member profile (FR-18b)
   /api/...                  -- routes from §4
 /components
   Header.tsx
   StatsBar.tsx               -- "Collected" / "Expected Collectibles" / Members, scoped to current view
   YearMonthPicker.tsx        -- year chips + 12-month grid, plus "All time" toggle
-  LedgerTable.tsx            -- month view: Sundays as columns, per-member "Completed" / "₱X of ₱Y" column
-  AllTimeTable.tsx           -- NEW: all-time view, one column per month, "Completed" / "Remaining ₱Z" per member
+  LedgerTable.tsx            -- month view: Sundays as columns, per-member "Completed" / "₱X of ₱Y" column;
+                              -- only renders rows where is_member_active_in_month() is true (§7);
+                              -- cells where !is_sunday_editable_for_member() render as "N/A", locked
+  AllTimeTable.tsx           -- all-time view, one column per month, "Completed" / "Remaining ₱Z" per member
   AmountEditModal.tsx        -- modal for entering a contribution amount (any date)
-  MemberForm.tsx             -- add/edit member incl. joined_date
+  MemberForm.tsx             -- add member incl. joined_date; edit joined_date/left_date on existing members
+  MemberSearch.tsx           -- NEW: "Find my record" name search box, links to /members/{id}
+  MemberProfile.tsx          -- NEW: renders the all-time + month-by-month view for one member
   PinModal.tsx               -- set-pin / login modal
 /lib
   supabaseClient.ts
   supabaseAdmin.ts
   auth.ts
-  dates.ts                   -- NEW: sundaysInMonth() and related helpers
+  dates.ts                   -- sundaysInMonth() and related helpers
 ```
 
 ## 9. Visual Style (unchanged)
@@ -254,6 +297,25 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SESSION_SECRET=
 ```
+
+## 14. Changelog (v4 → v5)
+- Added `members.left_date` (nullable). "Mark as Left" sets it; "Reactivate"
+  clears it. No delete is ever triggered by either action.
+- Removed `DELETE /api/members/:id` entirely — replaced by `PATCH` with
+  `left_date`.
+- `expected_for_member()` (§7) is now bounded on both ends: `joined_date` and
+  `left_date`. Added `is_sunday_editable_for_member()` to lock cells outside
+  that window (renders "N/A", and the API must reject writes to them too).
+- Added `is_member_active_in_month()` (§7) — governs whether a member's row
+  appears at all in a given month's `LedgerTable`, separate from per-cell
+  editability. This is what makes a member "quietly disappear" starting the
+  month after they leave.
+- Added a public per-member profile page (`/members/{id}`) and a
+  `GET /api/members/:id` route to power it.
+- Added `GET /api/members/search?q=` and a `MemberSearch.tsx` component for
+  the "Find my record" name search on the main page.
+- "Total Members" stat (StatsBar) now counts only members with no `left_date`
+  or a future one.
 
 ## 13. Changelog (v3 → v4)
 - `sundaysInMonth()` (§3) no longer filters out Sundays that haven't happened

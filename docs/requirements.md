@@ -1,5 +1,5 @@
 # Requirements — Youth Fund Ledger
-_Revision 4 — see "Changelog" at bottom for what changed from v1 and why._
+_Revision 5 — see "Changelog" at bottom for what changed from v1 and why._
 
 ## 1. Overview
 A transparent, public web ledger for tracking a church youth group's weekly Sunday
@@ -45,10 +45,16 @@ past or present.
   today when the member is added, but editable to backdate it to when they
   actually started contributing per the paper records).
 - FR-8: A member's "expected" total for a given month counts **every Sunday
-  in that month on or after their joined date** — including Sundays later in
-  the month that haven't happened yet. This means the expected amount for a
-  month is fixed from day one (the full month's worth), not something that
-  grows week by week as Sundays pass.
+  in that month where `joined_date <= sunday <= left_date`** (or no upper
+  bound if they haven't left) — including Sundays later in the month that
+  haven't happened yet, if they're still active. This means the expected
+  amount for a month is fixed from day one for an active member, not
+  something that grows week by week as Sundays pass.
+- FR-8b: Any Sunday **before** a member's `joined_date`, or **after** their
+  `left_date`, is not counted toward expected and is not editable — it
+  should display as a neutral "N/A" rather than an empty/editable cell, so
+  the treasurer can't accidentally log a contribution for a period the
+  member wasn't part of the group.
 
 ### 3.3 Year / Month Navigation
 - FR-9: Navigation is a two-step calendar-style picker: a **year selector**,
@@ -82,27 +88,48 @@ past or present.
 
 ### 3.5 Members (Treasurer only)
 - FR-16: Add a new member: name + joined date (defaults to today, editable).
-- FR-17: Remove a member (with confirmation) — deletes their contribution
-  history.
-- FR-18: Edit a member's joined date later if it was entered incorrectly.
+- FR-17: **"Mark as Left"** replaces the old hard-delete "Remove Member."
+  Instead of deleting the member (which used to cascade-delete their
+  contribution history), this sets a `left_date` (defaults to today,
+  editable). **No contribution data is ever deleted by this action.**
+- FR-17b: A member with a `left_date` set is treated as active for any month
+  where `joined_date <= that month <= left_date`, and inactive for any month
+  after. Concretely: the month they leave in still fully counts them; the
+  month after, they stop appearing in current-entry views (see FR-8b).
+- FR-17c: **"Reactivate"** — clears a member's `left_date`, restoring them to
+  active status without losing any history. Available any time for a member
+  who has left.
+- FR-18: Edit a member's `joined_date` or `left_date` later if entered
+  incorrectly.
 
-### 3.6 Stats (always visible)
+### 3.6 Member Profile / Individual Record
+- FR-18b: Each member has a permanent, unique, publicly viewable page (e.g.
+  `/members/{id}`) showing that member's own contribution history: an
+  all-time total and a month-by-month breakdown (reusing the same
+  "Completed" / "₱X of ₱Y" / "Remaining ₱Z" logic from §3.4/§3.3).
+- FR-18c: This page is **public/read-only**, consistent with the rest of the
+  ledger's transparency — no PIN required to view it, only to edit anything.
+- FR-18d: The main page includes a **"Find my record" name search** so a
+  member can look themselves up and reach their own profile page without
+  needing to know or be given their internal ID directly.
+
+### 3.7 Stats (always visible)
 - FR-19: **"Collected"** — total amount actually contributed, scoped to
   whatever is currently selected (a specific month, or the "All time" view).
   This is a rename of the old "All-Time Total" and now dynamically follows
   the current filter rather than always meaning the full history.
 - FR-19b: **"Expected Collectibles"** — total expected amount across all
   members for the same scope as FR-19 (new stat).
-- FR-20: Total number of members (always reflects current membership,
-  regardless of month/view selected).
-- FR-21: (superseded by FR-13 — see §3.4 for per-member progress display)
+- FR-20: Total number of **active** members (i.e. no `left_date`, or a
+  `left_date` that hasn't passed yet) — members who have left are not
+  counted here, though their historical data remains fully visible elsewhere.
 
-### 3.7 Reporting
+### 3.8 Reporting
 - FR-22: A print-friendly view (admin controls hidden) for handing physical
   reports to church leaders.
 
-### 3.8 Access Control
-- FR-23: Public viewers can see everything in 3.3–3.7 but cannot edit anything.
+### 3.9 Access Control
+- FR-23: Public viewers can see everything in 3.3–3.8 but cannot edit anything.
 - FR-24: Treasurer unlocks edit mode via PIN. First-time use lets them set it.
 - FR-25: Treasurer can lock (log out of) edit mode manually.
 
@@ -167,3 +194,19 @@ past or present.
   the member's joined date), not just Sundays that have occurred so far. This
   was an explicit choice — see FR-8 and FR-14b for the reasoning and the
   resulting effect on when "Completed" appears.
+
+## 10. Changelog (v4 → v5)
+- Hard-delete "Remove Member" is replaced by **"Mark as Left"** — sets a
+  `left_date` instead of deleting anything. No contribution data is ever
+  deleted this way. A "Reactivate" action clears `left_date` if they return.
+- "Expected" is now bounded on both ends: `joined_date <= sunday <=
+  left_date`. A member who leaves mid-month still gets full credit for the
+  Sundays that occurred while they were active; Sundays after they left don't
+  count against them and aren't editable.
+- Added a public, per-member profile page (`/members/{id}`) showing that
+  member's own all-time and month-by-month history.
+- Added a "Find my record" name-search on the main page so members can reach
+  their own profile without needing their internal ID.
+- "Total Members" stat now counts only currently-active members; former
+  members' data remains fully visible elsewhere, just excluded from this
+  count.

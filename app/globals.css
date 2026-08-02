@@ -286,6 +286,59 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 /* N/A cell for before joined_date */
 .stamp-na { color: #c0b49a; font-size: 0.8rem; }
 
+/* Member search */
+.member-search {
+  position: relative;
+  max-width: 360px;
+  margin: 0 auto 1.25rem;
+}
+.member-search-input {
+  font-family: 'Space Mono', monospace;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #2d5a3d;
+  border-radius: 6px;
+  background: #fff;
+  color: #2d2a24;
+  font-size: 0.85rem;
+}
+.member-search-input:focus {
+  outline: none;
+  border-color: #b5862a;
+  box-shadow: 0 0 0 3px rgba(181,134,42,0.15);
+}
+.member-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #f5f0e8;
+  border: 2px solid #2d5a3d;
+  border-radius: 6px;
+  list-style: none;
+  z-index: 50;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.member-search-results li + li {
+  border-top: 1px solid #ddd5c0;
+}
+.member-search-result-btn {
+  font-family: 'Space Mono', monospace;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  color: #2d2a24;
+  cursor: pointer;
+}
+.member-search-result-btn:hover {
+  background: #2d5a3d;
+  color: #f5f0e8;
+}
+
 /* ── Mobile ── */
 @media (max-width: 600px) {
   .main { padding: 1rem 0.75rem; }
@@ -295,6 +348,8 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
   .stat-value { font-size: 0.95rem; }
 
   .ymp-months { grid-template-columns: repeat(4, 1fr); }
+
+  .member-search { max-width: 100%; }
 
   .ledger-table { font-size: 0.75rem; }
   .ledger-table th, .ledger-table td { padding: 0.4rem 0.4rem; }
