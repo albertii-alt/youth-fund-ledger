@@ -10,6 +10,7 @@ import AmountEditModal from '@/components/AmountEditModal';
 import MemberForm from '@/components/MemberForm';
 import EditMemberModal from '@/components/EditMemberModal';
 import MemberSearch from '@/components/MemberSearch';
+import ViewerCount from '@/components/ViewerCount';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
 interface Settings { church_name: string; expected_weekly_amount: number }
@@ -178,6 +179,8 @@ export default function Home() {
       </header>
 
       <p className="record-notice">📋 Contribution records started June 2026</p>
+
+      <ViewerCount />
 
       <MemberSearch />
 

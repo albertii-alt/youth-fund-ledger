@@ -286,6 +286,15 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 /* N/A cell for before joined_date */
 .stamp-na { color: #c0b49a; font-size: 0.8rem; }
 
+/* Viewer count */
+.viewer-count {
+  text-align: center;
+  font-size: 0.78rem;
+  color: #2d5a3d;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
 /* Member search */
 .member-search {
   position: relative;
