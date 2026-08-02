@@ -26,8 +26,15 @@ export async function GET(req: NextRequest) {
 
   if (!all && !isNaN(year) && !isNaN(month)) {
     const sundays = sundaysInMonth(year, month).map(toDateString);
+    // Only include members active for any part of this month
+    const firstDay = `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-01`;
+    const lastDay = toDateString(new Date(year, month, 0)); // day 0 of next month = last day of this month
+    const activeMembers = members.filter((m) =>
+      m.joined_date <= lastDay &&
+      (m.left_date == null || m.left_date >= firstDay)
+    );
     const contributions = allContributions.filter((c) => sundays.includes(c.contribution_date));
-    return NextResponse.json({ settings, members, sundays, contributions });
+    return NextResponse.json({ settings, members: activeMembers, sundays, contributions });
   }
 
   if (all) {
@@ -50,7 +57,9 @@ export async function GET(req: NextRequest) {
         const actual = allContributions
           .filter((c) => c.member_id === m.id && sundays.includes(c.contribution_date))
           .reduce((sum, c) => sum + Number(c.amount), 0);
-        const expected = sundays.filter((s) => s >= m.joined_date).length * expectedWeekly;
+        const expected = sundays.filter(
+          (s) => s >= m.joined_date && (m.left_date == null || s <= m.left_date)
+        ).length * expectedWeekly;
         rows.push({ member_id: m.id, year: y, month: mo, actual, expected });
       }
     }

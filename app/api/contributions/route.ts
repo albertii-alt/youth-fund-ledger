@@ -20,6 +20,22 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'contribution_date cannot be in a month that has not started yet' }, { status: 400 });
   }
 
+  // Enforce is_sunday_editable_for_member server-side — don't rely on UI alone
+  const { data: member, error: memberError } = await supabaseAdmin
+    .from('members')
+    .select('joined_date, left_date')
+    .eq('id', member_id)
+    .single();
+  if (memberError || !member) {
+    return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+  }
+  if (contribution_date < member.joined_date) {
+    return NextResponse.json({ error: 'contribution_date is before this member\'s joined date' }, { status: 400 });
+  }
+  if (member.left_date && contribution_date > member.left_date) {
+    return NextResponse.json({ error: 'contribution_date is after this member\'s left date' }, { status: 400 });
+  }
+
   const parsed = parseFloat(amount);
   if (isNaN(parsed) || parsed < 0) {
     return NextResponse.json({ error: 'Amount must be a non-negative number' }, { status: 400 });

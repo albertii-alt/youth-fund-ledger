@@ -9,10 +9,11 @@ import PinModal from '@/components/PinModal';
 import AmountEditModal from '@/components/AmountEditModal';
 import MemberForm from '@/components/MemberForm';
 import EditMemberModal from '@/components/EditMemberModal';
+import MemberSearch from '@/components/MemberSearch';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
 interface Settings { church_name: string; expected_weekly_amount: number }
-interface Member { id: string; name: string; joined_date: string }
+interface Member { id: string; name: string; joined_date: string; left_date: string | null }
 interface Contribution { member_id: string; contribution_date: string; amount: number }
 interface AggRow { member_id: string; year: number; month: number; actual: number; expected: number }
 interface MonthData { settings: Settings; members: Member[]; sundays: string[]; contributions: Contribution[] }
@@ -61,6 +62,8 @@ export default function Home() {
   // Stats scoped to current view
   const settings = allTime ? allData?.settings : monthData?.settings;
   const members = allTime ? (allData?.members ?? []) : (monthData?.members ?? []);
+  const phtToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const activeMembers = members.filter((m) => m.left_date == null || m.left_date >= phtToday);
   const expectedWeekly = Number(settings?.expected_weekly_amount ?? 20);
 
   let collected = 0;
@@ -73,7 +76,9 @@ export default function Home() {
     const sundays = monthData.sundays;
     collected = monthData.contributions.reduce((sum, c) => sum + Number(c.amount), 0);
     expectedCollectibles = members.reduce((sum, m) => {
-      return sum + sundays.filter((s) => s >= m.joined_date).length * expectedWeekly;
+      return sum + sundays.filter(
+        (s) => s >= m.joined_date && (m.left_date == null || s <= m.left_date)
+      ).length * expectedWeekly;
     }, 0);
   }
 
@@ -108,19 +113,34 @@ export default function Home() {
     refresh();
   }
 
-  async function handleEditMember(id: string, name: string, joined_date: string) {
+  async function handleEditMember(id: string, name: string, joined_date: string, left_date: string | null) {
     await fetch(`/api/members/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, joined_date }),
+      body: JSON.stringify({ name, joined_date, left_date }),
     });
     setEditMember(null);
     refresh();
   }
 
-  async function handleRemoveMember(id: string, name: string) {
-    if (!confirm(`Remove "${name}" and all their contributions?`)) return;
-    await fetch(`/api/members/${id}`, { method: 'DELETE' });
+  async function handleMarkAsLeft(member: Member) {
+    const date = prompt(`Set left date for "${member.name}":`, new Date().toISOString().slice(0, 10));
+    if (!date) return;
+    await fetch(`/api/members/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ left_date: date }),
+    });
+    refresh();
+  }
+
+  async function handleReactivate(member: Member) {
+    if (!confirm(`Reactivate "${member.name}"? This will clear their left date.`)) return;
+    await fetch(`/api/members/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ left_date: null }),
+    });
     refresh();
   }
 
@@ -159,10 +179,12 @@ export default function Home() {
 
       <p className="record-notice">📋 Contribution records started June 2026</p>
 
+      <MemberSearch />
+
       <StatsBar
         collected={collected}
         expectedCollectibles={expectedCollectibles}
-        memberCount={members.length}
+        memberCount={activeMembers.length}
       />
 
       {loggedIn && (
@@ -198,7 +220,8 @@ export default function Home() {
           expectedWeeklyAmount={expectedWeekly}
           loggedIn={loggedIn}
           onEditAmount={openEditModal}
-          onRemoveMember={handleRemoveMember}
+          onMarkAsLeft={handleMarkAsLeft}
+          onReactivate={handleReactivate}
           onEditMember={setEditMember}
         />
       ) : (

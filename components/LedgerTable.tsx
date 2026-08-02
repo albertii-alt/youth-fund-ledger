@@ -1,6 +1,6 @@
 'use client';
 
-interface Member { id: string; name: string; joined_date: string }
+interface Member { id: string; name: string; joined_date: string; left_date: string | null }
 interface Contribution { member_id: string; contribution_date: string; amount: number }
 
 interface Props {
@@ -10,13 +10,14 @@ interface Props {
   expectedWeeklyAmount: number;
   loggedIn?: boolean;
   onEditAmount?: (memberId: string, date: string, current: number | null) => void;
-  onRemoveMember?: (id: string, name: string) => void;
+  onMarkAsLeft?: (member: Member) => void;
+  onReactivate?: (member: Member) => void;
   onEditMember?: (member: Member) => void;
 }
 
 export default function LedgerTable({
   members, sundays, contributions, expectedWeeklyAmount,
-  loggedIn, onEditAmount, onRemoveMember, onEditMember,
+  loggedIn, onEditAmount, onMarkAsLeft, onReactivate, onEditMember,
 }: Props) {
   const getAmount = (memberId: string, date: string) =>
     contributions.find((c) => c.member_id === memberId && c.contribution_date === date)?.amount ?? null;
@@ -27,7 +28,9 @@ export default function LedgerTable({
       .reduce((sum, c) => sum + Number(c.amount), 0);
 
   const memberExpected = (member: Member) =>
-    sundays.filter((s) => s >= member.joined_date).length * expectedWeeklyAmount;
+    sundays.filter(
+      (s) => s >= member.joined_date && (member.left_date == null || s <= member.left_date)
+    ).length * expectedWeeklyAmount;
 
   if (members.length === 0) return <p className="empty-state">No members yet.</p>;
   if (sundays.length === 0) return <p className="empty-state">No Sundays recorded for this period.</p>;
@@ -52,17 +55,23 @@ export default function LedgerTable({
             const actual = memberActual(m.id);
             const expected = memberExpected(m);
             const completed = actual >= expected && expected > 0;
+            const hasLeft = m.left_date != null;
             return (
               <tr key={m.id}>
-                <td className="col-name">{m.name}</td>
+                <td className="col-name">{m.name}{hasLeft && <span className="left-badge"> (left)</span>}</td>
                 {sundays.map((s) => {
                   const amount = getAmount(m.id, s);
-                  const eligible = s >= m.joined_date;
+                  const editable = s >= m.joined_date && (m.left_date == null || s <= m.left_date);
+                  if (!editable) {
+                    return (
+                      <td key={s} className="col-sunday">
+                        <span className="stamp-na">N/A</span>
+                      </td>
+                    );
+                  }
                   return (
                     <td key={s} className="col-sunday">
-                      {!eligible ? (
-                        <span className="stamp-na">—</span>
-                      ) : loggedIn ? (
+                      {loggedIn ? (
                         <button
                           className={amount !== null && amount > 0 ? 'stamp stamp-btn' : 'stamp-empty stamp-empty-btn'}
                           onClick={() => onEditAmount?.(m.id, s, amount)}
@@ -86,7 +95,10 @@ export default function LedgerTable({
                 {loggedIn && (
                   <td className="col-action">
                     <button className="remove-btn" title="Edit member" onClick={() => onEditMember?.(m)}>✎</button>
-                    <button className="remove-btn" title="Remove member" onClick={() => onRemoveMember?.(m.id, m.name)}>×</button>
+                    {hasLeft
+                      ? <button className="remove-btn" title="Reactivate member" onClick={() => onReactivate?.(m)}>↩</button>
+                      : <button className="remove-btn" title="Mark as left" onClick={() => onMarkAsLeft?.(m)}>✕</button>
+                    }
                   </td>
                 )}
               </tr>

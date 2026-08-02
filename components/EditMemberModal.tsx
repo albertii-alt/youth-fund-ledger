@@ -2,17 +2,18 @@
 
 import { useState } from 'react';
 
-interface Member { id: string; name: string; joined_date: string }
+interface Member { id: string; name: string; joined_date: string; left_date: string | null }
 
 interface Props {
   member: Member;
-  onSave: (id: string, name: string, joined_date: string) => Promise<void>;
+  onSave: (id: string, name: string, joined_date: string, left_date: string | null) => Promise<void>;
   onClose: () => void;
 }
 
 export default function EditMemberModal({ member, onSave, onClose }: Props) {
   const [name, setName] = useState(member.name);
   const [joinedDate, setJoinedDate] = useState(member.joined_date);
+  const [leftDate, setLeftDate] = useState(member.left_date ?? '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +21,7 @@ export default function EditMemberModal({ member, onSave, onClose }: Props) {
     e.preventDefault();
     if (!name.trim()) { setError('Name is required'); return; }
     setLoading(true);
-    await onSave(member.id, name.trim(), joinedDate);
+    await onSave(member.id, name.trim(), joinedDate, leftDate || null);
     setLoading(false);
   }
 
@@ -46,6 +47,15 @@ export default function EditMemberModal({ member, onSave, onClose }: Props) {
               type="date"
               value={joinedDate}
               onChange={(e) => setJoinedDate(e.target.value)}
+              className="pin-input"
+            />
+          </div>
+          <div className="form-field">
+            <label>Left date <span style={{ fontWeight: 'normal', fontSize: '0.85em' }}>(leave blank if still active)</span></label>
+            <input
+              type="date"
+              value={leftDate}
+              onChange={(e) => setLeftDate(e.target.value)}
               className="pin-input"
             />
           </div>
