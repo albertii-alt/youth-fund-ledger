@@ -1,5 +1,5 @@
 # Requirements — Youth Fund Ledger
-_Revision 5 — see "Changelog" at bottom for what changed from v1 and why._
+_Revision 6 — see "Changelog" at bottom for what changed from v1 and why._
 
 ## 1. Overview
 A transparent, public web ledger for tracking a church youth group's weekly Sunday
@@ -124,12 +124,25 @@ past or present.
   `left_date` that hasn't passed yet) — members who have left are not
   counted here, though their historical data remains fully visible elsewhere.
 
-### 3.8 Reporting
+### 3.8 Live Viewer Count
+- FR-26: The site shows a live count of how many browsers are currently
+  connected to the page (e.g. "👀 3 viewing now"), updating in real time
+  without needing a page refresh.
+- FR-27: This is **public** — visible to anyone on the site, not just the
+  treasurer.
+- FR-28: The count is based on active anonymous connections, not verified
+  unique people — e.g. one person with two tabs open counts as 2. This is an
+  accepted simplification, not a bug to fix.
+- FR-29: No personal data is collected or shown for this feature — each
+  connection is tracked only by a random, throwaway session identifier that
+  means nothing outside that one browser tab's lifetime.
+
+### 3.9 Reporting
 - FR-22: A print-friendly view (admin controls hidden) for handing physical
   reports to church leaders.
 
-### 3.9 Access Control
-- FR-23: Public viewers can see everything in 3.3–3.8 but cannot edit anything.
+### 3.10 Access Control
+- FR-23: Public viewers can see everything in 3.3–3.9 but cannot edit anything.
 - FR-24: Treasurer unlocks edit mode via PIN. First-time use lets them set it.
 - FR-25: Treasurer can lock (log out of) edit mode manually.
 
@@ -210,3 +223,9 @@ past or present.
 - "Total Members" stat now counts only currently-active members; former
   members' data remains fully visible elsewhere, just excluded from this
   count.
+
+## 11. Changelog (v5 → v6)
+- Added a live viewer count (§3.8) using Supabase Realtime Presence — no new
+  database table or API route, since it connects directly from the browser
+  to Supabase's realtime service using the existing public anon key.
+- Public by design — visible to everyone, not gated behind the treasurer PIN.

@@ -1,5 +1,5 @@
 # Design — Youth Fund Ledger
-_Revision 5 — reflects auto-computed Sundays, member joined_date, and the
+_Revision 6 — reflects auto-computed Sundays, member joined_date, and the
 year/month calendar picker. See requirements.md §7 for the "why."_
 
 ## 1. Stack (unchanged)
@@ -267,6 +267,7 @@ if current view is "All time":
   MemberForm.tsx             -- add member incl. joined_date; edit joined_date/left_date on existing members
   MemberSearch.tsx           -- NEW: "Find my record" name search box, links to /members/{id}
   MemberProfile.tsx          -- NEW: renders the all-time + month-by-month view for one member
+  ViewerCount.tsx            -- NEW: live viewer count via Supabase Realtime Presence (§8a)
   PinModal.tsx               -- set-pin / login modal
 /lib
   supabaseClient.ts
@@ -274,6 +275,69 @@ if current view is "All time":
   auth.ts
   dates.ts                   -- sundaysInMonth() and related helpers
 ```
+
+## 8a. Live Viewer Count (Supabase Realtime Presence)
+
+No new table, no new API route, no service-role code — this connects
+directly from the browser to Supabase's Realtime service using the existing
+public anon client (`lib/supabaseClient.ts`).
+
+**How it works:**
+1. On mount, `ViewerCount.tsx` opens a Supabase Realtime channel with a fixed
+   name shared by every visitor, e.g. `ledger-viewers` (pick something
+   specific to this project so it can't collide with another app's channel
+   if you ever reuse the same Supabase project).
+2. Each browser "tracks" itself on that channel with a throwaway random key
+   (e.g. `crypto.randomUUID()`, generated fresh in memory — never stored,
+   never tied to any member or identity).
+3. Supabase's Realtime service keeps a live list of everyone currently
+   tracked on that channel and pushes a "sync" event to all connected
+   clients whenever someone joins or leaves.
+4. `ViewerCount.tsx` listens for that sync event and sets its displayed
+   count to the number of currently-tracked presences.
+5. When a tab closes or loses connection, Supabase automatically drops that
+   presence and re-broadcasts — no manual cleanup job needed (this is the
+   main advantage over the heartbeat/polling alternative that was considered
+   and not chosen).
+
+```ts
+// components/ViewerCount.tsx (sketch)
+'use client';
+import { useEffect, useState } from 'react';
+import { supabaseClient } from '@/lib/supabaseClient';
+
+export function ViewerCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const channel = supabaseClient.channel('ledger-viewers', {
+      config: { presence: { key: crypto.randomUUID() } },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        setCount(Object.keys(state).length);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await channel.track({});
+      });
+
+    return () => { channel.unsubscribe(); };
+  }, []);
+
+  return <span>👀 {count} viewing now</span>;
+}
+```
+
+**Notes:**
+- Confirm Realtime is enabled for the Supabase project (Database → Replication
+  or Settings → API, depending on Supabase's current dashboard layout — it's
+  on by default for new projects, but worth a quick check).
+- Counts connections, not verified unique people (FR-28) — a false sense of
+  precision isn't the goal here, just a friendly live indicator.
+- Uses the free tier's realtime connection quota — trivial for a group this
+  size, even with everyone looking at once.
 
 ## 9. Visual Style (unchanged)
 Ledger/passbook aesthetic: warm paper background, ruled-paper lines, serif
@@ -297,6 +361,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SESSION_SECRET=
 ```
+
+## 15. Changelog (v5 → v6)
+- Added live viewer count via Supabase Realtime Presence (§8a) — client-only,
+  no new table/route/service-role code.
+- Public, per FR-27 — visible on the main page to everyone.
 
 ## 14. Changelog (v4 → v5)
 - Added `members.left_date` (nullable). "Mark as Left" sets it; "Reactivate"

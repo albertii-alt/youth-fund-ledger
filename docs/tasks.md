@@ -1,9 +1,30 @@
 # Tasks — Youth Fund Ledger
-_Revision 5 — you're picking this up live in production, post the full-month-
-Sundays fix. See "Post-Deploy Revision 2" below before continuing. (Older
-revision notes kept below for history/reference.)_
+_Revision 6 — you're picking this up live in production, post member
+archive/profile feature. See "Post-Deploy Revision 3" below before
+continuing. (Older revision notes kept below for history/reference.)_
 
-## ⚠️ Post-Deploy Revision 2 (read this first — you are here)
+## ⚠️ Post-Deploy Revision 3 (read this first — you are here)
+See `requirements.md` §3.8 and `design.md` §8a. No database migration this
+time — this feature is entirely client-side, connecting straight to
+Supabase Realtime.
+
+- [ ] Confirm Realtime is enabled on the Supabase project (check the
+      dashboard — on by default for new projects, but verify)
+- [ ] Build `components/ViewerCount.tsx` per the sketch in `design.md` §8a —
+      joins a shared presence channel (e.g. `ledger-viewers`), tracks itself
+      with a throwaway random key, listens for `sync` events, displays the
+      live count
+- [ ] Add `<ViewerCount />` to the main page (public, near the header/stats
+      area — style it consistently with the existing ledger/passbook look)
+- [ ] Verify: open the deployed site in two different browsers/devices at
+      once — confirm the count shows 2, and closing one tab drops it back
+      to 1 within a few seconds
+- [ ] Verify: the count is visible without logging in as treasurer (public,
+      per FR-27)
+- [ ] Confirm no personal data appears anywhere in this feature — just a
+      number, nothing identifying who's connected
+
+## Post-Deploy Revision 2 (historical — kept for reference)
 See `requirements.md` §10 and `design.md` §14. This is a real schema change
 (additive only) plus new features — confirm the migration with yourself
 before running it, since the app is live with real data.
