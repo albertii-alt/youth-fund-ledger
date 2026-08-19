@@ -122,6 +122,39 @@ function isInUnstartedMonth(dateStr: string): boolean {
   );
 }
 ```
+## 3b. Activity Logging (writes alongside `/api/contributions`)
+
+Every write to `/api/contributions` also logs the change — same request,
+same transaction ideally, using the existing service-role client. No
+separate write path, no trigger needed.
+
+```ts
+// Inside the PUT /api/contributions handler, before/after the upsert:
+async function logIfChanged(
+  member_id: string,
+  contribution_date: string,
+  previous_amount: number,
+  new_amount: number
+) {
+  if (previous_amount === new_amount) return; // FR-31: no-op saves aren't logged
+  await supabaseAdmin.from('activity_log').insert({
+    member_id,
+    contribution_date,
+    previous_amount,
+    new_amount,
+  });
+}
+```
+
+Sequence for the PUT handler:
+1. Read the existing `contributions` row for `(member_id, contribution_date)`
+   (if none exists, `previous_amount = 0`).
+2. Upsert the new amount as before.
+3. Call `logIfChanged()` with the before/after values.
+4. Return success only after both the upsert and the log insert succeed —
+   if the log insert fails, return an error rather than silently losing the
+   audit trail (don't fail-open here the way the rate limiter does; this
+   isn't a login-availability tradeoff, it's a data-integrity one).
 
 `/api/contributions` should still validate `isSunday(contribution_date)`
 (unchanged) and now `!isInUnstartedMonth(contribution_date)` instead of the
@@ -141,6 +174,7 @@ old `!isFuture(contribution_date)`.
 | `/api/members/:id` | GET | public | Single member's profile: name, joined_date, left_date, all-time total, month-by-month breakdown (powers `/members/{id}`) |
 | `/api/members/search?q=` | GET | public | Name search (partial match) for the "Find my record" box — returns `{ id, name }` matches only, nothing sensitive |
 | `/api/contributions` | PUT | session | Upsert `{ member_id, contribution_date, amount }` — server must also reject if `!is_sunday_editable_for_member()` (§7), not just check the date is a real Sunday |
+| `GET /api/activity-log?member_id=&limit=&offset=` | GET | public | Reverse-chronological log entries, optionally filtered by member. Joins `activity_log` with `members` for display name. |
 
 **Removed in v5**: `DELETE /api/members/:id` — hard delete is gone. Use
 `PATCH` with `left_date` instead. (The DB-level `on delete cascade` on
@@ -269,6 +303,7 @@ if current view is "All time":
   MemberProfile.tsx          -- NEW: renders the all-time + month-by-month view for one member
   ViewerCount.tsx            -- NEW: live viewer count via Supabase Realtime Presence (§8a)
   PinModal.tsx               -- set-pin / login modal
+  ActivityLog.tsx            -- NEW: public reverse-chronological log, optional member filter
 /lib
   supabaseClient.ts
   supabaseAdmin.ts
@@ -361,7 +396,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SESSION_SECRET=
 ```
-
+## 16. Changelog (v6 → v7)
+- Added `activity_log` table (§2) — insert-only, traces every contribution
+  amount change (previous/new amount, timestamp).
+- Added `GET /api/activity-log` (§4) and logging logic in the
+  `/api/contributions` write path (§3b).
+- No-op saves (same amount re-entered) are not logged (FR-31).
+- Public, per FR-32 — no PIN required to view.
+- "Who" is not tracked — known limitation given the shared PIN model, not a
+  bug (FR-34).
+  
 ## 15. Changelog (v5 → v6)
 - Added live viewer count via Supabase Realtime Presence (§8a) — client-only,
   no new table/route/service-role code.

@@ -11,6 +11,7 @@ import MemberForm from '@/components/MemberForm';
 import EditMemberModal from '@/components/EditMemberModal';
 import MemberSearch from '@/components/MemberSearch';
 import ViewerCount from '@/components/ViewerCount';
+import ActivityLog from '@/components/ActivityLog';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
 interface Settings { church_name: string; expected_weekly_amount: number }
@@ -35,6 +36,7 @@ export default function Home() {
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  const [showActivityLog, setShowActivityLog] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json())
@@ -168,6 +170,7 @@ export default function Home() {
   return (
     <main className="main">
       <header className="header">
+        <button className="activity-log-icon-btn" onClick={() => setShowActivityLog(true)} title="Activity Log">📋</button>
         <h1>{settings?.church_name ?? 'Youth Ministry'}</h1>
         <p className="subtitle">Contribution Ledger</p>
         <div className="auth-bar">
@@ -247,6 +250,9 @@ export default function Home() {
           onSave={handleEditMember}
           onClose={() => setEditMember(null)}
         />
+      )}
+      {showActivityLog && (
+        <ActivityLog members={members} loggedIn={loggedIn} onClose={() => setShowActivityLog(false)} />
       )}
       {editTarget && (
         <AmountEditModal

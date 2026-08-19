@@ -398,3 +398,41 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 /* Progress status */
 .status-completed { color: #2d5a3d; font-weight: bold; }
 .status-remaining { color: #7a6f5e; font-size: 0.8rem; }
+
+/* Activity Log */
+.activity-log { margin-top: 2rem; }
+.activity-log-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+.activity-log-header h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+.activity-log-filter { font-size: 0.85rem; padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); }
+.activity-log-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.activity-log-entry { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; padding: 0.5rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; }
+.activity-log-name { font-weight: 600; min-width: 8rem; }
+.activity-log-date { color: var(--muted); }
+.activity-log-change { font-family: monospace; }
+.activity-log-time { margin-left: auto; color: var(--muted); font-size: 0.78rem; }
+
+/* Activity Log modal overrides */
+.modal-wide { width: min(680px, 95vw); max-height: 80vh; overflow-y: auto; }
+.activity-log-modal-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.activity-log-modal-header h2 { margin: 0; font-size: 1rem; font-weight: 600; flex: 1; }
+.activity-log-controls { display: flex; align-items: center; gap: 0.5rem; }
+.modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--muted); padding: 0.25rem; }
+.activity-log-hide { margin-left: auto; }
+.btn-ghost { background: none; border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.btn-ghost:hover { background: var(--surface); }
+.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+.btn-danger { background: #dc2626; color: #fff; border: none; padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.btn-danger:hover { background: #b91c1c; }
+
+/* Activity Log icon button */
+.header { position: relative; }
+.activity-log-icon-btn { position: absolute; top: 0; right: 0; background: none; border: none; font-size: 1.25rem; cursor: pointer; padding: 0.25rem; line-height: 1; opacity: 0.7; }
+.activity-log-icon-btn:hover { opacity: 1; }
+
+/* Activity Log tabs */
+.activity-log-tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid var(--border); }
+.activity-tab { background: none; border: none; padding: 0.4rem 1rem; font-size: 0.875rem; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.activity-tab:hover { color: var(--text); }
+.activity-tab-active { color: var(--text); font-weight: 600; border-bottom-color: #2d5a3d; }
+.activity-log-actions { display: flex; gap: 0.4rem; margin-left: auto; }
+.load-more-btn { display: block; width: 100%; margin-top: 0.75rem; text-align: center; }

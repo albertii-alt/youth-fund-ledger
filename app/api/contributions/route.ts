@@ -41,6 +41,16 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Amount must be a non-negative number' }, { status: 400 });
   }
 
+  // Read previous amount for activity log (no-op check)
+  const { data: existing } = await supabaseAdmin
+    .from('contributions')
+    .select('amount')
+    .eq('member_id', member_id)
+    .eq('contribution_date', contribution_date)
+    .maybeSingle();
+
+  const previousAmount = existing ? Number(existing.amount) : 0;
+
   const { data, error } = await supabaseAdmin
     .from('contributions')
     .upsert({ member_id, contribution_date, amount: parsed, updated_at: new Date().toISOString() })
@@ -48,5 +58,14 @@ export async function PUT(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Log only if amount actually changed (FR-31: no-op saves must not log)
+  if (parsed !== previousAmount) {
+    const { error: logError } = await supabaseAdmin
+      .from('activity_log')
+      .insert({ member_id, contribution_date, previous_amount: previousAmount, new_amount: parsed });
+    if (logError) return NextResponse.json({ error: 'Failed to write activity log' }, { status: 500 });
+  }
+
   return NextResponse.json(data);
 }

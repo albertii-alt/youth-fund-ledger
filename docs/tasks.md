@@ -1,28 +1,26 @@
 # Tasks — Youth Fund Ledger
-_Revision 6 — you're picking this up live in production, post member
-archive/profile feature. See "Post-Deploy Revision 3" below before
-continuing. (Older revision notes kept below for history/reference.)_
+_Revision 7 — you're picking this up live in production, post live-viewer-
+count feature. See "Post-Deploy Revision 4" below before continuing. (Older
+revision notes kept below for history/reference.)_
 
-## ⚠️ Post-Deploy Revision 3 (read this first — you are here)
-See `requirements.md` §3.8 and `design.md` §8a. No database migration this
-time — this feature is entirely client-side, connecting straight to
-Supabase Realtime.
+## ⚠️ Post-Deploy Revision 4 (read this first — you are here)
+See `requirements.md` §3.9 and `design.md` §3b. New table, additive only —
+confirm with yourself before running it, same as always on a live app.
 
-- [ ] Confirm Realtime is enabled on the Supabase project (check the
-      dashboard — on by default for new projects, but verify)
-- [ ] Build `components/ViewerCount.tsx` per the sketch in `design.md` §8a —
-      joins a shared presence channel (e.g. `ledger-viewers`), tracks itself
-      with a throwaway random key, listens for `sync` events, displays the
-      live count
-- [ ] Add `<ViewerCount />` to the main page (public, near the header/stats
-      area — style it consistently with the existing ledger/passbook look)
-- [ ] Verify: open the deployed site in two different browsers/devices at
-      once — confirm the count shows 2, and closing one tab drops it back
-      to 1 within a few seconds
-- [ ] Verify: the count is visible without logging in as treasurer (public,
-      per FR-27)
-- [ ] Confirm no personal data appears anywhere in this feature — just a
-      number, nothing identifying who's connected
+- [ ] Run the migration in `design.md` §2 (v6→v7): create `activity_log`,
+      enable RLS, add the public-read policy
+- [ ] Add logging logic to the `/api/contributions` PUT handler per
+      `design.md` §3b — read previous amount, upsert, log if changed, fail
+      the request (not silently) if the log insert fails
+- [ ] Build `GET /api/activity-log?member_id=&limit=&offset=`
+- [ ] Build `components/ActivityLog.tsx` — public, reverse-chronological,
+      optional member filter dropdown
+- [ ] Add a way to reach it from the main page (nav link or button)
+- [ ] Verify: editing a contribution amount creates exactly one log entry
+      with correct previous/new values
+- [ ] Verify: re-saving the same amount does NOT create a log entry
+- [ ] Verify: the log is visible without treasurer login
+- [ ] Verify: filtering by member shows only that member's changes
 
 ## Post-Deploy Revision 2 (historical — kept for reference)
 See `requirements.md` §10 and `design.md` §14. This is a real schema change
