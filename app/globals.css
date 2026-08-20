@@ -819,6 +819,34 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 .activity-log-actions { display: flex; gap: 0.4rem; margin-left: auto; }
 .load-more-btn { display: block; width: 100%; margin-top: 0.75rem; text-align: center; }
 
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  z-index: 999;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast--success { background: #2d5a3d; color: #f5f0e8; }
+.toast--neutral { background: #eae4d6; color: #2d2a24; border: 1px solid #d4c9b0; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(12px); }
+}
+.toast--in  { animation: toast-in  0.25s ease forwards; }
+.toast--out { animation: toast-out 0.35s ease forwards; }
+
 /* Member profile page */
 .member-name-link {
   color: #2d5a3d;

@@ -12,6 +12,7 @@ import MemberSearch from '@/components/MemberSearch';
 import ViewerCount from '@/components/ViewerCount';
 import CollectionProgressBar from '@/components/CollectionProgressBar';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import Toast from '@/components/Toast';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
 interface Settings { church_name: string; expected_weekly_amount: number }
@@ -40,6 +41,7 @@ export default function Home() {
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [showRecordNotice, setShowRecordNotice] = useState(false);
   const recordNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'neutral' } | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json())
@@ -98,7 +100,6 @@ export default function Home() {
     }
   };
 
-  // Stats scoped to current view
   const settings = allTime ? allData?.settings : monthData?.settings;
   const members = allTime ? (allData?.members ?? []) : (monthData?.members ?? []);
   const phtToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
@@ -125,7 +126,6 @@ export default function Home() {
     }, 0);
   }
 
-  // All-time collected — always from allData regardless of current view
   const allTimeCollected = allData ? allData.rows.reduce((sum, r) => sum + r.actual, 0) : 0;
   const availableYears = Array.from(new Set([
     ...(allData?.rows ?? []).map((r) => r.year),
@@ -136,7 +136,6 @@ export default function Home() {
   const isFutureMonth = !allTime &&
     (year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth() + 1));
 
-  // Keep allData fresh for year picker even in month view
   useEffect(() => {
     fetch('/api/ledger?all=true').then((r) => r.json())
       .then((d) => {
@@ -205,7 +204,6 @@ export default function Home() {
     refresh();
   }
 
-  // Compute sundays for month view to pass to AllTimeTable months
   const currentSundays = monthData?.sundays ?? sundaysInMonth(year, month).map(toDateString);
 
   return (
@@ -230,6 +228,7 @@ export default function Home() {
           pinSet={pinSet}
           onLoginSuccess={() => { setLoggedIn(true); setPinSet(true); }}
           onLogout={() => setLoggedIn(false)}
+          onToast={(message, type) => setToast({ message, type })}
         />
       </header>
 
@@ -267,6 +266,10 @@ export default function Home() {
 
       {loading ? (
         <div className="table-wrapper">
+          <div style={{ marginBottom: '1.25rem' }}>
+            <div className="skel" style={{ width: '100%', height: 10, borderRadius: 999 }} />
+            <div className="skel skel-text" style={{ width: 260, margin: '0.4rem auto 0' }} />
+          </div>
           <table className="ledger-table" style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -289,7 +292,7 @@ export default function Home() {
           </table>
         </div>
       ) : isFutureMonth ? (
-        <p className="empty-state">This month hasn't happened yet.</p>
+        <p className="empty-state">This month hasn&apos;t happened yet.</p>
       ) : allTime && allData ? (
         <AllTimeTable
           members={allData.members}
@@ -330,6 +333,10 @@ export default function Home() {
           onSave={handleSaveAmount}
           onClose={() => setEditTarget(null)}
         />
+      )}
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />
       )}
     </main>
   );

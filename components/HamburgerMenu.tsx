@@ -8,9 +8,10 @@ interface Props {
   pinSet: boolean;
   onLoginSuccess: () => void;
   onLogout: () => void;
+  onToast: (message: string, type: 'success' | 'neutral') => void;
 }
 
-export default function HamburgerMenu({ loggedIn, pinSet, onLoginSuccess, onLogout }: Props) {
+export default function HamburgerMenu({ loggedIn, pinSet, onLoginSuccess, onLogout, onToast }: Props) {
   const [open, setOpen] = useState(false);
   const [showPin, setShowPin] = useState(false);
   const [pin, setPin] = useState('');
@@ -48,6 +49,7 @@ export default function HamburgerMenu({ loggedIn, pinSet, onLoginSuccess, onLogo
       setShowPin(false);
       setOpen(false);
       onLoginSuccess();
+      onToast('Welcome back, Treasurer! 👋', 'success');
     } else {
       setError(data.error ?? 'Something went wrong');
     }
@@ -57,6 +59,7 @@ export default function HamburgerMenu({ loggedIn, pinSet, onLoginSuccess, onLogo
     await fetch('/api/auth/logout', { method: 'POST' });
     setOpen(false);
     onLogout();
+    onToast('Signed out successfully', 'neutral');
   }
 
   return (
