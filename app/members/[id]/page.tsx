@@ -98,7 +98,9 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
                   <td className="col-progress">
                     {completed
                       ? <span className="status-completed">✓ Completed</span>
-                      : <span>₱{row.actual.toFixed(2)} of ₱{row.expected.toFixed(2)}</span>
+                      : row.actual > 0
+                        ? <span className="status-partial">◑ ₱{row.actual.toFixed(2)} of ₱{row.expected.toFixed(2)}</span>
+                        : <span className="status-not-yet">— not yet</span>
                     }
                   </td>
                 </tr>

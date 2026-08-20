@@ -11,6 +11,7 @@ import MemberForm from '@/components/MemberForm';
 import EditMemberModal from '@/components/EditMemberModal';
 import MemberSearch from '@/components/MemberSearch';
 import ViewerCount from '@/components/ViewerCount';
+import CollectionProgressBar from '@/components/CollectionProgressBar';
 import ActivityLog from '@/components/ActivityLog';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
@@ -85,11 +86,11 @@ export default function Home() {
     }, 0);
   }
 
-  // Years for picker — derived from allData if available, else current year only
+  // Years for picker — derived from allData if available, else current PHT year only
   const availableYears = Array.from(new Set([
     ...(allData?.rows ?? []).map((r) => r.year),
     ...(allData?.members ?? []).map((m) => Number(m.joined_date.slice(0, 4))),
-    today.getFullYear(),
+    Number(phtToday.slice(0, 4)),
   ])).sort();
 
   const isFutureMonth = !allTime &&
@@ -192,6 +193,8 @@ export default function Home() {
         expectedCollectibles={expectedCollectibles}
         memberCount={activeMembers.length}
       />
+
+      <CollectionProgressBar collected={collected} expected={expectedCollectibles} />
 
       {loggedIn && (
         <div className="admin-bar">

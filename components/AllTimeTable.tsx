@@ -46,11 +46,14 @@ export default function AllTimeTable({ members, months, rows }: Props) {
                   return <td key={ym} className="col-sunday"><span className="stamp-na">—</span></td>;
                 }
                 const completed = row.actual >= row.expected;
+                const partial = !completed && row.actual > 0;
                 return (
                   <td key={ym} className="col-sunday">
                     {completed
                       ? <span className="status-completed">✓</span>
-                      : <span className="status-remaining">₱{(row.expected - row.actual).toFixed(0)}</span>
+                      : partial
+                        ? <span className="status-partial">◑</span>
+                        : <span className="status-not-yet">—</span>
                     }
                   </td>
                 );

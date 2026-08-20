@@ -9,43 +9,85 @@ interface Props {
   onAllTime: () => void;
 }
 
-const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
 
 export default function YearMonthPicker({ year, month, allTime, years, onChange, onAllTime }: Props) {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
+  const phtToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const currentYear = Number(phtToday.slice(0, 4));
+  const currentMonth = Number(phtToday.slice(5, 7));
+
+  function handleYearChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const y = Number(e.target.value);
+    const safeMonth = y === currentYear && month > currentMonth ? currentMonth : month;
+    onChange(y, safeMonth);
+  }
+
+  function handleMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    onChange(year, Number(e.target.value));
+  }
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear  = month === 1 ? year - 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear  = month === 12 ? year + 1 : year;
+  const isNextDisabled = nextYear > currentYear || (nextYear === currentYear && nextMonth > currentMonth);
 
   return (
     <div className="ymp-wrap">
-      <div className="ymp-years">
+      <div className="ymp-row">
         <button
-          className={`ymp-year-btn${allTime ? ' active' : ''}`}
+          className={`ymp-alltime-btn${allTime ? ' active' : ''}`}
           onClick={onAllTime}
-        >All time</button>
-        {years.map((y) => (
-          <button
-            key={y}
-            className={`ymp-year-btn${!allTime && y === year ? ' active' : ''}`}
-            onClick={() => onChange(y, y === year ? month : currentMonth)}
-          >{y}</button>
-        ))}
-      </div>
-      {!allTime && (
-        <div className="ymp-months">
-          {MONTH_LABELS.map((label, i) => {
+        >
+          All time
+        </button>
+
+        <select
+          className="ymp-select"
+          value={year}
+          onChange={handleYearChange}
+          aria-label="Select year"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        <select
+          className="ymp-select"
+          value={month}
+          onChange={handleMonthChange}
+          aria-label="Select month"
+        >
+          {MONTH_FULL.map((label, i) => {
             const m = i + 1;
             const isFuture = year > currentYear || (year === currentYear && m > currentMonth);
-            const isSelected = m === month;
             return (
-              <button
-                key={m}
-                disabled={isFuture}
-                className={`ymp-month-btn${isSelected ? ' active' : ''}${isFuture ? ' disabled' : ''}`}
-                onClick={() => !isFuture && onChange(year, m)}
-              >{label}</button>
+              <option key={m} value={m} disabled={isFuture}>
+                {label}
+              </option>
             );
           })}
+        </select>
+      </div>
+
+      {!allTime && (
+        <div className="ymp-nav">
+          <button className="ymp-nav-arrow" onClick={() => onChange(prevYear, prevMonth)} aria-label={`Go to ${MONTH_FULL[prevMonth - 1]} ${prevYear}`}>
+            ← {MONTH_FULL[prevMonth - 1]}
+          </button>
+          <span className="ymp-nav-current">{MONTH_FULL[month - 1]} {year}</span>
+          <button
+            className={`ymp-nav-arrow${isNextDisabled ? ' disabled' : ''}`}
+            onClick={() => { if (!isNextDisabled) onChange(nextYear, nextMonth); }}
+            disabled={isNextDisabled}
+            aria-label={isNextDisabled ? 'No future months available' : `Go to ${MONTH_FULL[nextMonth - 1]} ${nextYear}`}
+          >
+            {MONTH_FULL[nextMonth - 1]} →
+          </button>
         </div>
       )}
     </div>

@@ -36,8 +36,9 @@ export default function LedgerTable({
   if (sundays.length === 0) return <p className="empty-state">No Sundays recorded for this period.</p>;
 
   return (
-    <div className="table-wrapper">
-      <table className="ledger-table">
+    <div className="table-scroll-wrap">
+      <div className="table-wrapper">
+        <table className="ledger-table">
         <thead>
           <tr>
             <th className="col-name">Member</th>
@@ -89,7 +90,9 @@ export default function LedgerTable({
                 <td className="col-progress">
                   {completed
                     ? <span className="status-completed">✓ Completed</span>
-                    : <span>₱{actual.toFixed(2)} of ₱{expected.toFixed(2)}</span>
+                    : actual > 0
+                      ? <span className="status-partial">◑ ₱{actual.toFixed(0)} of ₱{expected.toFixed(0)}</span>
+                      : <span className="status-not-yet">— not yet</span>
                   }
                 </td>
                 {loggedIn && (
@@ -105,7 +108,8 @@ export default function LedgerTable({
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
