@@ -7,6 +7,8 @@ interface Props {
   prevMonthCollected: number | null;
   membersContributed: number;
   allTime: boolean;
+  allTimeTotalExpenses: number;
+  allTimeCollected: number;
 }
 
 export default function StatsBar({
@@ -16,6 +18,8 @@ export default function StatsBar({
   prevMonthCollected,
   membersContributed,
   allTime,
+  allTimeTotalExpenses,
+  allTimeCollected,
 }: Props) {
   const outstanding = Math.max(0, expectedCollectibles - collected);
   const collectedPct = expectedCollectibles > 0 ? Math.round((collected / expectedCollectibles) * 100) : null;
@@ -61,6 +65,18 @@ export default function StatsBar({
             : `${membersContributed} contributed`}
         </span>
       </div>
+
+      {(() => {
+        const balance = allTimeCollected - allTimeTotalExpenses;
+        const tint = balance > 0 ? ' stat-card--balance-positive' : balance < 0 ? ' stat-card--balance-negative' : '';
+        return (
+          <div className={`stat-card${tint}`}>
+            <span className="stat-card-label">Fund Balance</span>
+            <span className="stat-card-value">₱{balance.toFixed(2)}</span>
+            <span className="stat-card-secondary">after ₱{allTimeTotalExpenses.toFixed(2)} in expenses</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

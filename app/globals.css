@@ -54,7 +54,7 @@ body {
 /* Stats bar */
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
@@ -73,6 +73,14 @@ body {
 .stat-card--complete {
   background: #1e4a2d;
   border-color: #4caf72;
+}
+.stat-card--balance-positive {
+  background: #1e4a2d;
+  border-color: #4caf72;
+}
+.stat-card--balance-negative {
+  background: #3d2a0a;
+  border-color: #c97c2a;
 }
 .stat-card-label {
   font-size: 0.65rem;
@@ -489,6 +497,9 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
     grid-template-columns: repeat(2, 1fr);
     gap: 0.6rem;
   }
+  .stats-bar > :last-child {
+    grid-column: 1 / -1;
+  }
   .stat-card-value { font-size: 0.95rem; }
 
   .member-search { max-width: 100%; }
@@ -746,3 +757,33 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 .activity-tab-active { color: var(--text); font-weight: 600; border-bottom-color: #2d5a3d; }
 .activity-log-actions { display: flex; gap: 0.4rem; margin-left: auto; }
 .load-more-btn { display: block; width: 100%; margin-top: 0.75rem; text-align: center; }
+
+/* Expenses page */
+.expenses-total-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  background: #2d5a3d;
+  color: #f5f0e8;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+}
+.expenses-total-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; }
+.expenses-total-value { font-size: 1.1rem; font-weight: bold; }
+.expenses-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.expense-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  border: 1px solid #ddd5c0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.expense-date { color: #7a6f5e; white-space: nowrap; min-width: 6rem; }
+.expense-description { flex: 1; min-width: 8rem; }
+.expense-amount { font-weight: bold; white-space: nowrap; }
+.expense-actions { display: flex; gap: 0.4rem; margin-left: auto; }

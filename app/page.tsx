@@ -32,6 +32,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [pinSet, setPinSet] = useState(false);
+  const [allTimeTotalExpenses, setAllTimeTotalExpenses] = useState(0);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
@@ -41,6 +42,8 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json())
       .then((d) => { setLoggedIn(d.loggedIn); setPinSet(d.pinSet); });
+    fetch('/api/expenses/total').then((r) => r.json())
+      .then((d) => { if (typeof d.total === 'number') setAllTimeTotalExpenses(d.total); });
   }, []);
 
   const fetchMonth = useCallback(() => {
@@ -89,7 +92,8 @@ export default function Home() {
     }, 0);
   }
 
-  // Years for picker — derived from allData if available, else current PHT year only
+  // All-time collected — always from allData regardless of current view
+  const allTimeCollected = allData ? allData.rows.reduce((sum, r) => sum + r.actual, 0) : 0;
   const availableYears = Array.from(new Set([
     ...(allData?.rows ?? []).map((r) => r.year),
     ...(allData?.members ?? []).map((m) => Number(m.joined_date.slice(0, 4))),
@@ -202,6 +206,8 @@ export default function Home() {
         prevMonthCollected={prevMonthCollected}
         membersContributed={membersContributed}
         allTime={allTime}
+        allTimeTotalExpenses={allTimeTotalExpenses}
+        allTimeCollected={allTimeCollected}
       />
 
       <CollectionProgressBar collected={collected} expected={expectedCollectibles} />

@@ -114,6 +114,9 @@ export default function HamburgerMenu({ loggedIn, pinSet, onLoginSuccess, onLogo
             <Link href="/activity-log" className="hd-item hd-item--link" onClick={() => setOpen(false)}>
               📋 Activity Log
             </Link>
+            <Link href="/expenses" className="hd-item hd-item--link" onClick={() => setOpen(false)}>
+              💸 Expenses
+            </Link>
           </div>
         </div>
       )}
