@@ -33,6 +33,8 @@ export default function Home() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [pinSet, setPinSet] = useState(false);
   const [allTimeTotalExpenses, setAllTimeTotalExpenses] = useState(0);
+  const monthCache = useRef<Record<string, MonthData>>({});
+  const allTimeCache = useRef<AllData | null>(null);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
@@ -47,23 +49,54 @@ export default function Home() {
   }, []);
 
   const fetchMonth = useCallback(() => {
+    const key = `${year}-${month}`;
+    if (monthCache.current[key]) {
+      setMonthData(monthCache.current[key]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetch(`/api/ledger?year=${year}&month=${month}`)
       .then((r) => r.json())
-      .then((d) => { if (d.settings && d.members) setMonthData(d); setLoading(false); });
+      .then((d) => {
+        if (d.settings && d.members) {
+          monthCache.current[key] = d;
+          setMonthData(d);
+        }
+        setLoading(false);
+      });
   }, [year, month]);
 
   const fetchAllTime = useCallback(() => {
+    if (allTimeCache.current) {
+      setAllData(allTimeCache.current);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetch('/api/ledger?all=true')
       .then((r) => r.json())
-      .then((d) => { if (d.settings && d.members) setAllData(d); setLoading(false); });
+      .then((d) => {
+        if (d.settings && d.members) {
+          allTimeCache.current = d;
+          setAllData(d);
+        }
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => { if (allTime) { setMonthData(null); fetchAllTime(); } }, [allTime, fetchAllTime]);
   useEffect(() => { if (!allTime) fetchMonth(); }, [allTime, fetchMonth]);
 
-  const refresh = () => { allTime ? fetchAllTime() : fetchMonth(); };
+  const refresh = () => {
+    if (allTime) {
+      allTimeCache.current = null;
+      fetchAllTime();
+    } else {
+      delete monthCache.current[`${year}-${month}`];
+      fetchMonth();
+    }
+  };
 
   // Stats scoped to current view
   const settings = allTime ? allData?.settings : monthData?.settings;
@@ -106,7 +139,12 @@ export default function Home() {
   // Keep allData fresh for year picker even in month view
   useEffect(() => {
     fetch('/api/ledger?all=true').then((r) => r.json())
-      .then((d) => { if (d.settings && d.members) setAllData(d); });
+      .then((d) => {
+        if (d.settings && d.members) {
+          allTimeCache.current = d;
+          setAllData(d);
+        }
+      });
   }, []);
 
   async function handleAddMember(name: string, joined_date: string) {
