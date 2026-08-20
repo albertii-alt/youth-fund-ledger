@@ -29,7 +29,8 @@ export default function ViewerCount() {
 
   return (
     <p className="viewer-count">
-      👀 {count} {count === 1 ? 'person' : 'people'} viewing now
+      <span className="viewer-dot" />
+      {count} {count === 1 ? 'person' : 'people'} viewing now
     </p>
   );
 }

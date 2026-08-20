@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import StatsBar from '@/components/StatsBar';
 import YearMonthPicker from '@/components/YearMonthPicker';
 import LedgerTable from '@/components/LedgerTable';
@@ -38,6 +38,8 @@ export default function Home() {
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showRecordNotice, setShowRecordNotice] = useState(false);
+  const recordNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.json())
@@ -175,6 +177,18 @@ export default function Home() {
   return (
     <main className="main">
       <header className="header">
+        <button className="info-icon-btn" onClick={() => {
+            if (recordNoticeTimer.current) clearTimeout(recordNoticeTimer.current);
+            setShowRecordNotice((v) => {
+              if (!v) recordNoticeTimer.current = setTimeout(() => setShowRecordNotice(false), 3500);
+              return !v;
+            });
+          }} title="About this ledger">
+          ℹ️
+          {showRecordNotice && (
+            <span className="record-notice-popover">Contribution records started June 2026</span>
+          )}
+        </button>
         <button className="activity-log-icon-btn" onClick={() => setShowActivityLog(true)} title="Activity Log">📋</button>
         <h1>{settings?.church_name ?? 'Youth Ministry'}</h1>
         <p className="subtitle">Contribution Ledger</p>
@@ -185,8 +199,6 @@ export default function Home() {
           }
         </div>
       </header>
-
-      <p className="record-notice">📋 Contribution records started June 2026</p>
 
       <ViewerCount />
 
