@@ -118,7 +118,16 @@ export default function ActivityLogPage() {
       )}
 
       {loading ? (
-        <p className="empty-state">Loading…</p>
+        <ul className="activity-log-list">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <li key={i} className="activity-log-entry">
+              <div className="skel skel-text" style={{ width: 100 }} />
+              <div className="skel skel-text" style={{ width: 72 }} />
+              <div className="skel skel-text" style={{ width: 120 }} />
+              <div className="skel skel-text" style={{ width: 80, marginLeft: 'auto' }} />
+            </li>
+          ))}
+        </ul>
       ) : entries.length === 0 ? (
         <p className="empty-state">{tab === 'hidden' ? 'No hidden entries.' : 'No activity yet.'}</p>
       ) : (

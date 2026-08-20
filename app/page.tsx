@@ -266,7 +266,28 @@ export default function Home() {
       />
 
       {loading ? (
-        <p className="empty-state">Loading…</p>
+        <div className="table-wrapper">
+          <table className="ledger-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th className="col-name">Member</th>
+                {Array.from({ length: 4 }).map((_, i) => <th key={i}>&nbsp;</th>)}
+                <th className="col-progress">Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="col-name"><div className="skel skel-text" style={{ width: 90 }} /></td>
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <td key={j}><div className="skel skel-text" style={{ width: 32, margin: '0 auto' }} /></td>
+                  ))}
+                  <td className="col-progress"><div className="skel skel-text" style={{ width: 80, margin: '0 auto' }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : isFutureMonth ? (
         <p className="empty-state">This month hasn't happened yet.</p>
       ) : allTime && allData ? (

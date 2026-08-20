@@ -99,7 +99,18 @@ export default function ExpensesPage() {
       </div>
 
       {loading ? (
-        <p className="empty-state">Loading…</p>
+        <>
+          <div className="skel-card" style={{ height: 52, borderRadius: 8, marginBottom: '1.25rem' }} />
+          <ul className="expenses-list">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="expense-entry">
+                <div className="skel skel-text" style={{ width: 72 }} />
+                <div className="skel skel-text" style={{ flex: 1, minWidth: 80 }} />
+                <div className="skel skel-text" style={{ width: 60 }} />
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <>
           <div className="expenses-total-bar">

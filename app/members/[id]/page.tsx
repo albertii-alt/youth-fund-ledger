@@ -1,8 +1,15 @@
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
+import CollectionProgressBar from '@/components/CollectionProgressBar';
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+}
 
 interface BreakdownRow { year: number; month: number; actual: number; expected: number }
 interface Member { id: string; name: string; joined_date: string; left_date: string | null }
@@ -60,31 +67,35 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="main">
+      <a href="/" className="mp-back">← Back to Ledger</a>
       <header className="header">
         <h1>{member.name}</h1>
         <p className="subtitle">Contribution Record</p>
-        <p className="record-notice">
-          Joined: {member.joined_date}
-          {member.left_date && ` · Left: ${member.left_date}`}
-        </p>
+        <p className="subtitle">Joined {fmtDate(member.joined_date)}</p>
+        {member.left_date && (
+          <span className="mp-left-banner">Left the program on {fmtDate(member.left_date)}</span>
+        )}
       </header>
 
-      <div className="stats-bar">
-        <div className="stat">
-          <span className="stat-label">All-Time Collected</span>
-          <span className="stat-value">₱{allTimeActual.toFixed(2)}</span>
+      <div className="mp-stats-bar">
+        <div className="stat-card">
+          <span className="stat-card-label">All-Time Collected</span>
+          <span className="stat-card-value mp-mono">₱{allTimeActual.toFixed(2)}</span>
         </div>
-        <div className="stat">
-          <span className="stat-label">All-Time Expected</span>
-          <span className="stat-value">₱{allTimeExpected.toFixed(2)}</span>
+        <div className="stat-card">
+          <span className="stat-card-label">All-Time Expected</span>
+          <span className="stat-card-value mp-mono">₱{allTimeExpected.toFixed(2)}</span>
         </div>
       </div>
+
+      <CollectionProgressBar collected={allTimeActual} expected={allTimeExpected} />
 
       <div className="table-wrapper">
         <table className="ledger-table">
           <thead>
             <tr>
               <th className="col-name">Month</th>
+              <th>Contributed</th>
               <th className="col-progress">Status</th>
             </tr>
           </thead>
@@ -95,6 +106,9 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
               return (
                 <tr key={`${row.year}-${row.month}`}>
                   <td className="col-name">{MONTH_LABELS[row.month - 1]} {row.year}</td>
+                  <td className="mp-mono">
+                    {row.actual > 0 ? `₱${row.actual.toFixed(2)}` : '—'}
+                  </td>
                   <td className="col-progress">
                     {completed
                       ? <span className="status-completed">✓ Completed</span>
@@ -110,9 +124,6 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         </table>
       </div>
 
-      <p style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-        <a href="/" className="btn-secondary" style={{ textDecoration: 'none' }}>← Back to ledger</a>
-      </p>
     </main>
   );
 }

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 interface Member { id: string; name: string; joined_date: string; left_date: string | null }
 interface Contribution { member_id: string; contribution_date: string; amount: number }
 
@@ -59,7 +61,10 @@ export default function LedgerTable({
             const hasLeft = m.left_date != null;
             return (
               <tr key={m.id}>
-                <td className="col-name">{m.name}{hasLeft && <span className="left-badge"> (left)</span>}</td>
+                <td className="col-name">
+                  <Link href={`/members/${m.id}`} className="member-name-link">{m.name}</Link>
+                  {hasLeft && <span className="left-badge"> (left)</span>}
+                </td>
                 {sundays.map((s) => {
                   const amount = getAmount(m.id, s);
                   const editable = s >= m.joined_date && (m.left_date == null || s <= m.left_date);
