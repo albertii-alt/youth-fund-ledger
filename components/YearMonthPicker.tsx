@@ -14,12 +14,15 @@ const MONTH_FULL = [
   'July','August','September','October','November','December',
 ];
 
+const ALL_TIME_VALUE = 'all';
+
 export default function YearMonthPicker({ year, month, allTime, years, onChange, onAllTime }: Props) {
   const phtToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const currentYear = Number(phtToday.slice(0, 4));
   const currentMonth = Number(phtToday.slice(5, 7));
 
   function handleYearChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (e.target.value === ALL_TIME_VALUE) { onAllTime(); return; }
     const y = Number(e.target.value);
     const safeMonth = y === currentYear && month > currentMonth ? currentMonth : month;
     onChange(y, safeMonth);
@@ -38,19 +41,13 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
   return (
     <div className="ymp-wrap">
       <div className="ymp-row">
-        <button
-          className={`ymp-alltime-btn${allTime ? ' active' : ''}`}
-          onClick={onAllTime}
-        >
-          All time
-        </button>
-
         <select
           className="ymp-select"
-          value={year}
+          value={allTime ? ALL_TIME_VALUE : year}
           onChange={handleYearChange}
           aria-label="Select year"
         >
+          <option value={ALL_TIME_VALUE}>All time</option>
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
@@ -60,6 +57,7 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
           className="ymp-select"
           value={month}
           onChange={handleMonthChange}
+          disabled={allTime}
           aria-label="Select month"
         >
           {MONTH_FULL.map((label, i) => {
@@ -77,7 +75,9 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
       {!allTime && (
         <div className="ymp-nav">
           <button className="ymp-nav-arrow" onClick={() => onChange(prevYear, prevMonth)} aria-label={`Go to ${MONTH_FULL[prevMonth - 1]} ${prevYear}`}>
-            &#8249;
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 2L2 8L8 14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
           <span className="ymp-nav-current">{MONTH_FULL[month - 1]} {year}</span>
           <button
@@ -86,7 +86,9 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
             disabled={isNextDisabled}
             aria-label={isNextDisabled ? 'No future months available' : `Go to ${MONTH_FULL[nextMonth - 1]} ${nextYear}`}
           >
-            &#8250;
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 2L8 8L2 14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
         </div>
       )}

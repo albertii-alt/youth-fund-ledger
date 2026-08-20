@@ -60,8 +60,8 @@ export default function Home() {
       .then((d) => { if (d.settings && d.members) setAllData(d); setLoading(false); });
   }, []);
 
+  useEffect(() => { if (allTime) { setMonthData(null); fetchAllTime(); } }, [allTime, fetchAllTime]);
   useEffect(() => { if (!allTime) fetchMonth(); }, [allTime, fetchMonth]);
-  useEffect(() => { if (allTime) fetchAllTime(); }, [allTime, fetchAllTime]);
 
   const refresh = () => { allTime ? fetchAllTime() : fetchMonth(); };
 
