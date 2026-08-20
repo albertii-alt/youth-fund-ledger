@@ -626,10 +626,7 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
   display: flex;
   align-items: center;
   gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #d4c9b0;
+  margin-bottom: 0.75rem;
 }
 .al-back-link {
   font-family: 'Space Mono', monospace;
@@ -648,7 +645,71 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
   color: #2d5a3d;
   flex: 1;
 }
-.al-page-controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.al-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #d4c9b0;
+}
+.al-toolbar .ymp-select { min-height: 36px; font-size: 0.82rem; }
+
+/* Activity log entry cards */
+.al-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.al-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #ddd5c0;
+  border-radius: 8px;
+}
+.al-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.al-card-name {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  color: #2d5a3d;
+  font-weight: 600;
+}
+.al-card-date {
+  font-size: 0.78rem;
+  color: #7a6f5e;
+  white-space: nowrap;
+}
+.al-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.al-card-change {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: bold;
+}
+.al-change--up   { color: #1e4a2d; }
+.al-change--down { color: #7a4f00; }
+.al-card-time {
+  font-size: 0.72rem;
+  color: #9a8f7e;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.al-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
 
 /* Activity Log */
 .activity-log { margin-top: 2rem; }

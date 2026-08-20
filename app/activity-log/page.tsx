@@ -16,6 +16,12 @@ interface Member { id: string; name: string }
 
 type Tab = 'visible' | 'hidden';
 
+function fmtDate(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
 export default function ActivityLogPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
@@ -93,21 +99,22 @@ export default function ActivityLogPage() {
       <div className="al-page-header">
         <Link href="/" className="al-back-link">← Back</Link>
         <h1 className="al-page-title">Activity Log</h1>
-        <div className="al-page-controls">
-          <select value={memberId} onChange={(e) => setMemberId(e.target.value)} className="activity-log-filter">
-            <option value="">All members</option>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-          {loggedIn && tab === 'visible' && entries.length > 0 && (
-            <button className="btn-secondary btn-sm" onClick={() => ask('Hide all visible entries?', hideAll)}>Hide All</button>
-          )}
-          {loggedIn && tab === 'hidden' && entries.length > 0 && (
-            <button className="btn-danger btn-sm" onClick={() => ask(
-              `Permanently delete all hidden entries${memberName ? ` for ${memberName}` : ''}? This cannot be undone.`,
-              purgeAll
-            )}>Delete All Hidden</button>
-          )}
-        </div>
+      </div>
+
+      <div className="al-toolbar">
+        <select value={memberId} onChange={(e) => setMemberId(e.target.value)} className="ymp-select">
+          <option value="">All members</option>
+          {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        {loggedIn && tab === 'visible' && entries.length > 0 && (
+          <button className="btn-secondary btn-sm" onClick={() => ask('Hide all visible entries?', hideAll)}>Hide All</button>
+        )}
+        {loggedIn && tab === 'hidden' && entries.length > 0 && (
+          <button className="btn-danger btn-sm" onClick={() => ask(
+            `Permanently delete all hidden entries${memberName ? ` for ${memberName}` : ''}? This cannot be undone.`,
+            purgeAll
+          )}>Delete All Hidden</button>
+        )}
       </div>
 
       {loggedIn && (
@@ -118,13 +125,17 @@ export default function ActivityLogPage() {
       )}
 
       {loading ? (
-        <ul className="activity-log-list">
+        <ul className="al-list">
           {Array.from({ length: 8 }).map((_, i) => (
-            <li key={i} className="activity-log-entry">
-              <div className="skel skel-text" style={{ width: 100 }} />
-              <div className="skel skel-text" style={{ width: 72 }} />
-              <div className="skel skel-text" style={{ width: 120 }} />
-              <div className="skel skel-text" style={{ width: 80, marginLeft: 'auto' }} />
+            <li key={i} className="al-card">
+              <div className="al-card-top">
+                <div className="skel skel-text" style={{ width: 100 }} />
+                <div className="skel skel-text" style={{ width: 80 }} />
+              </div>
+              <div className="al-card-bottom">
+                <div className="skel skel-text" style={{ width: 140 }} />
+                <div className="skel skel-text" style={{ width: 90 }} />
+              </div>
             </li>
           ))}
         </ul>
@@ -132,33 +143,50 @@ export default function ActivityLogPage() {
         <p className="empty-state">{tab === 'hidden' ? 'No hidden entries.' : 'No activity yet.'}</p>
       ) : (
         <>
-          <ul className="activity-log-list">
-            {entries.map((e) => (
-              <li key={e.id} className="activity-log-entry">
-                <span className="activity-log-name">{e.members?.name ?? '—'}</span>
-                <span className="activity-log-date">{e.contribution_date}</span>
-                <span className="activity-log-change">₱{Number(e.previous_amount).toFixed(2)} → ₱{Number(e.new_amount).toFixed(2)}</span>
-                <span className="activity-log-time">{new Date(e.changed_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</span>
-                {loggedIn && tab === 'visible' && (
-                  <button className="btn-ghost btn-sm activity-log-hide" onClick={() => ask(
-                    `Hide this entry for ${e.members?.name ?? 'member'} on ${e.contribution_date}?`,
-                    () => hideOne(e.id)
-                  )}>Hide</button>
-                )}
-                {loggedIn && tab === 'hidden' && (
-                  <span className="activity-log-actions">
-                    <button className="btn-ghost btn-sm" onClick={() => ask(
-                      `Restore this entry for ${e.members?.name ?? 'member'} on ${e.contribution_date}?`,
-                      () => restoreOne(e.id)
-                    )}>Restore</button>
-                    <button className="btn-danger btn-sm" onClick={() => ask(
-                      `Permanently delete this entry for ${e.members?.name ?? 'member'} on ${e.contribution_date}? This cannot be undone.`,
-                      () => deleteOne(e.id)
-                    )}>Delete</button>
-                  </span>
-                )}
-              </li>
-            ))}
+          <ul className="al-list">
+            {entries.map((e) => {
+              const prev = Number(e.previous_amount);
+              const next = Number(e.new_amount);
+              const isIncrease = next > prev;
+              return (
+                <li key={e.id} className="al-card">
+                  <div className="al-card-top">
+                    <span className="al-card-name">{e.members?.name ?? '—'}</span>
+                    <span className="al-card-date">{fmtDate(e.contribution_date)}</span>
+                  </div>
+                  <div className="al-card-bottom">
+                    <span className={`al-card-change ${isIncrease ? 'al-change--up' : 'al-change--down'}`}>
+                      ₱{prev.toFixed(2)} → ₱{next.toFixed(2)}
+                    </span>
+                    <span className="al-card-time">
+                      {new Date(e.changed_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
+                    </span>
+                  </div>
+                  {loggedIn && (
+                    <div className="al-card-actions">
+                      {tab === 'visible' && (
+                        <button className="btn-ghost btn-sm" onClick={() => ask(
+                          `Hide this entry for ${e.members?.name ?? 'member'} on ${fmtDate(e.contribution_date)}?`,
+                          () => hideOne(e.id)
+                        )}>Hide</button>
+                      )}
+                      {tab === 'hidden' && (
+                        <>
+                          <button className="btn-ghost btn-sm" onClick={() => ask(
+                            `Restore this entry for ${e.members?.name ?? 'member'} on ${fmtDate(e.contribution_date)}?`,
+                            () => restoreOne(e.id)
+                          )}>Restore</button>
+                          <button className="btn-danger btn-sm" onClick={() => ask(
+                            `Permanently delete this entry for ${e.members?.name ?? 'member'} on ${fmtDate(e.contribution_date)}? This cannot be undone.`,
+                            () => deleteOne(e.id)
+                          )}>Delete</button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {nextCursor && (
             <button className="btn-ghost load-more-btn" onClick={loadMore} disabled={loadingMore}>
