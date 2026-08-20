@@ -36,7 +36,7 @@ export default function MemberSearch() {
         onChange={(e) => setQuery(e.target.value)}
         className="member-search-input"
         onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onBlur={() => setFocused(false)}
       />
       {showDropdown && (
         <ul className="member-search-results">
@@ -44,7 +44,7 @@ export default function MemberSearch() {
             <li key={r.id}>
               <button
                 className="member-search-result-btn"
-                onClick={() => { setFocused(false); setQuery(''); router.push(`/members/${r.id}`); }}
+                onMouseDown={(e) => { e.preventDefault(); setQuery(''); router.push(`/members/${r.id}`); }}
               >
                 {r.name}
               </button>
