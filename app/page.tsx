@@ -5,14 +5,13 @@ import StatsBar from '@/components/StatsBar';
 import YearMonthPicker from '@/components/YearMonthPicker';
 import LedgerTable from '@/components/LedgerTable';
 import AllTimeTable from '@/components/AllTimeTable';
-import PinModal from '@/components/PinModal';
 import AmountEditModal from '@/components/AmountEditModal';
 import MemberForm from '@/components/MemberForm';
 import EditMemberModal from '@/components/EditMemberModal';
 import MemberSearch from '@/components/MemberSearch';
 import ViewerCount from '@/components/ViewerCount';
 import CollectionProgressBar from '@/components/CollectionProgressBar';
-import ActivityLog from '@/components/ActivityLog';
+import HamburgerMenu from '@/components/HamburgerMenu';
 import { sundaysInMonth, toDateString } from '@/lib/dates';
 
 interface Settings { church_name: string; expected_weekly_amount: number }
@@ -33,11 +32,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [pinSet, setPinSet] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
-  const [showActivityLog, setShowActivityLog] = useState(false);
   const [showRecordNotice, setShowRecordNotice] = useState(false);
   const recordNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -107,11 +104,6 @@ export default function Home() {
     fetch('/api/ledger?all=true').then((r) => r.json())
       .then((d) => { if (d.settings && d.members) setAllData(d); });
   }, []);
-
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setLoggedIn(false);
-  }
 
   async function handleAddMember(name: string, joined_date: string) {
     await fetch('/api/members', {
@@ -189,15 +181,14 @@ export default function Home() {
             <span className="record-notice-popover">Contribution records started June 2026</span>
           )}
         </button>
-        <button className="activity-log-icon-btn" onClick={() => setShowActivityLog(true)} title="Activity Log">📋</button>
         <h1>{settings?.church_name ?? 'Youth Ministry'}</h1>
         <p className="subtitle">Contribution Ledger</p>
-        <div className="auth-bar">
-          {loggedIn
-            ? <button className="btn-secondary" onClick={handleLogout}>🔒 Lock</button>
-            : <button className="btn-primary" onClick={() => setShowPinModal(true)}>Treasurer Login</button>
-          }
-        </div>
+        <HamburgerMenu
+          loggedIn={loggedIn}
+          pinSet={pinSet}
+          onLoginSuccess={() => { setLoggedIn(true); setPinSet(true); }}
+          onLogout={() => setLoggedIn(false)}
+        />
       </header>
 
       <ViewerCount />
@@ -256,13 +247,6 @@ export default function Home() {
         <p className="empty-state">Failed to load data.</p>
       )}
 
-      {showPinModal && (
-        <PinModal
-          pinSet={pinSet}
-          onSuccess={() => { setLoggedIn(true); setPinSet(true); setShowPinModal(false); }}
-          onClose={() => setShowPinModal(false)}
-        />
-      )}
       {showMemberForm && (
         <MemberForm onSave={handleAddMember} onClose={() => setShowMemberForm(false)} />
       )}
@@ -272,9 +256,6 @@ export default function Home() {
           onSave={handleEditMember}
           onClose={() => setEditMember(null)}
         />
-      )}
-      {showActivityLog && (
-        <ActivityLog members={members} loggedIn={loggedIn} onClose={() => setShowActivityLog(false)} />
       )}
       {editTarget && (
         <AmountEditModal
