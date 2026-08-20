@@ -34,7 +34,22 @@ export async function GET(req: NextRequest) {
       (m.left_date == null || m.left_date >= firstDay)
     );
     const contributions = allContributions.filter((c) => sundays.includes(c.contribution_date));
-    return NextResponse.json({ settings, members: activeMembers, sundays, contributions });
+
+    // prevMonthCollected
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevSundays = sundaysInMonth(prevYear, prevMonth).map(toDateString);
+    const prevTotal = allContributions
+      .filter((c) => prevSundays.includes(c.contribution_date))
+      .reduce((sum, c) => sum + Number(c.amount), 0);
+    const prevMonthCollected = prevSundays.length > 0 ? prevTotal : null;
+
+    // membersContributed: active members with actual > 0 this month
+    const membersContributed = activeMembers.filter((m) =>
+      contributions.filter((c) => c.member_id === m.id).reduce((s, c) => s + Number(c.amount), 0) > 0
+    ).length;
+
+    return NextResponse.json({ settings, members: activeMembers, sundays, contributions, prevMonthCollected, membersContributed });
   }
 
   if (all) {
@@ -64,7 +79,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ settings, members, months, rows });
+    // membersContributed all-time: members who have ever contributed at least once
+    const membersContributed = members.filter((m) =>
+      allContributions.some((c) => c.member_id === m.id && Number(c.amount) > 0)
+    ).length;
+
+    return NextResponse.json({ settings, members, months, rows, prevMonthCollected: null, membersContributed });
   }
 
   return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });

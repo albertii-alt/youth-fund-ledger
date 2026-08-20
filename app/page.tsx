@@ -19,8 +19,8 @@ interface Settings { church_name: string; expected_weekly_amount: number }
 interface Member { id: string; name: string; joined_date: string; left_date: string | null }
 interface Contribution { member_id: string; contribution_date: string; amount: number }
 interface AggRow { member_id: string; year: number; month: number; actual: number; expected: number }
-interface MonthData { settings: Settings; members: Member[]; sundays: string[]; contributions: Contribution[] }
-interface AllData { settings: Settings; members: Member[]; months: string[]; rows: AggRow[] }
+interface MonthData { settings: Settings; members: Member[]; sundays: string[]; contributions: Contribution[]; prevMonthCollected: number | null; membersContributed: number }
+interface AllData { settings: Settings; members: Member[]; months: string[]; rows: AggRow[]; prevMonthCollected: null; membersContributed: number }
 interface EditTarget { memberId: string; date: string; memberName: string; current: number | null }
 
 export default function Home() {
@@ -69,6 +69,10 @@ export default function Home() {
   const phtToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const activeMembers = members.filter((m) => m.left_date == null || m.left_date >= phtToday);
   const expectedWeekly = Number(settings?.expected_weekly_amount ?? 20);
+  const prevMonthCollected: number | null = (!allTime && monthData?.prevMonthCollected !== undefined)
+    ? monthData.prevMonthCollected
+    : null;
+  const membersContributed: number = (allTime ? allData?.membersContributed : monthData?.membersContributed) ?? 0;
 
   let collected = 0;
   let expectedCollectibles = 0;
@@ -192,6 +196,9 @@ export default function Home() {
         collected={collected}
         expectedCollectibles={expectedCollectibles}
         memberCount={activeMembers.length}
+        prevMonthCollected={prevMonthCollected}
+        membersContributed={membersContributed}
+        allTime={allTime}
       />
 
       <CollectionProgressBar collected={collected} expected={expectedCollectibles} />
