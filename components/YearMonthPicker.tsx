@@ -77,7 +77,7 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
       {!allTime && (
         <div className="ymp-nav">
           <button className="ymp-nav-arrow" onClick={() => onChange(prevYear, prevMonth)} aria-label={`Go to ${MONTH_FULL[prevMonth - 1]} ${prevYear}`}>
-            ← {MONTH_FULL[prevMonth - 1]}
+            &#8249;
           </button>
           <span className="ymp-nav-current">{MONTH_FULL[month - 1]} {year}</span>
           <button
@@ -86,7 +86,7 @@ export default function YearMonthPicker({ year, month, allTime, years, onChange,
             disabled={isNextDisabled}
             aria-label={isNextDisabled ? 'No future months available' : `Go to ${MONTH_FULL[nextMonth - 1]} ${nextYear}`}
           >
-            {MONTH_FULL[nextMonth - 1]} →
+            &#8250;
           </button>
         </div>
       )}

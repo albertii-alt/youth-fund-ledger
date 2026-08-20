@@ -381,15 +381,20 @@ input[type="password"].pin-input { letter-spacing: 0.2em; }
 }
 .ymp-nav-arrow {
   font-family: 'Space Mono', monospace;
-  font-size: 0.78rem;
+  font-size: 1.1rem;
   color: #2d5a3d;
   background: transparent;
   border: 2px solid #2d5a3d;
-  border-radius: 6px;
-  padding: 0 0.75rem;
-  min-height: 44px;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
 }
 .ymp-nav-arrow:hover:not(.disabled) { background: #e8f0eb; }
 .ymp-nav-arrow.disabled { border-color: #ccc; color: #bbb; cursor: not-allowed; }
